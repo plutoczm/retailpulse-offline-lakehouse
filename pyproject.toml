@@ -1,0 +1,21 @@
+[project]
+name = "retailpulse-offline-lakehouse"
+version = "0.1.0"
+description = "RetailPulse: offline lakehouse analytics project for ecommerce retail operations."
+requires-python = ">=3.10"
+dependencies = [
+    "pyspark>=3.5.0,<4.0.0",
+    "pandas>=2.0.0,<3.0.0",
+    "pyarrow>=14.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+

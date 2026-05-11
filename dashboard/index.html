@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RetailPulse 电商经营三维数据指挥舱</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="enterprise3d.css" />
+  </head>
+  <body>
+    <canvas id="webgl" aria-hidden="true"></canvas>
+    <div class="light-sweep" aria-hidden="true"></div>
+
+    <main class="screen">
+      <header class="screen-head">
+        <section class="brand">
+          <span>RetailPulse 离线湖仓</span>
+          <h1>电商经营三维数据指挥舱</h1>
+          <p>ADS 经营指标联动 2.27 亿真实用户行为事件</p>
+        </section>
+        <section class="head-metrics" aria-label="当前数据状态">
+          <div><span>交易日期</span><strong id="retailDate">-</strong></div>
+          <div><span>行为日期</span><strong id="behaviorDate">-</strong></div>
+          <div><span>刷新时间</span><strong id="generatedAt">-</strong></div>
+        </section>
+      </header>
+
+      <section class="toolbar" aria-label="大屏筛选器">
+        <label>
+          <span>数据域</span>
+          <select id="domainFilter">
+            <option value="all">综合驾驶舱</option>
+            <option value="retail">经营交易域</option>
+            <option value="behavior">真实行为域</option>
+          </select>
+        </label>
+        <label><span>开始日期</span><input id="startDate" type="date" /></label>
+        <label><span>结束日期</span><input id="endDate" type="date" /></label>
+        <label>
+          <span>指标焦点</span>
+          <select id="metricFilter">
+            <option value="event_count">行为事件量</option>
+            <option value="active_user_count">活跃用户数</option>
+            <option value="pay_event_count">购买事件量</option>
+            <option value="view_to_pay_rate">访问购买率</option>
+            <option value="pay_amount">支付金额</option>
+          </select>
+        </label>
+        <label class="range"><span>空间景深</span><input id="depthControl" type="range" min="0" max="100" value="62" /></label>
+        <button id="resetView" type="button">重置视图</button>
+      </section>
+
+      <section class="kpi-strip" id="kpiStrip" aria-label="核心 KPI"></section>
+
+      <section class="command-grid" aria-label="三维可视化面板">
+        <article class="panel panel-left-top glow-frame retail-panel">
+          <div class="panel-title"><h2>交易趋势</h2><span>GMV / 支付 / 订单</span></div>
+          <canvas id="retailTrend"></canvas>
+        </article>
+
+        <article class="panel panel-left-bottom glow-frame behavior-panel">
+          <div class="panel-title"><h2>商品购买排行</h2><span id="productDate">-</span></div>
+          <canvas id="productRank"></canvas>
+        </article>
+
+        <article class="core-readout glow-frame behavior-panel">
+          <div class="core-title">
+            <span>真实行为转化核心</span>
+            <strong id="coreEventCount">-</strong>
+          </div>
+          <canvas id="funnelChart"></canvas>
+          <div class="core-insights" id="insights"></div>
+        </article>
+
+        <article class="panel panel-right-top glow-frame behavior-panel">
+          <div class="panel-title"><h2>行为能量波</h2><span id="behaviorHint">事件 / 活跃 / 购买</span></div>
+          <canvas id="behaviorWave"></canvas>
+        </article>
+
+        <article class="panel panel-right-bottom glow-frame behavior-panel">
+          <div class="panel-title"><h2>转化星图</h2><span>DAU × CVR</span></div>
+          <canvas id="conversionScatter"></canvas>
+        </article>
+
+        <article class="panel panel-bottom-left glow-frame behavior-panel">
+          <div class="panel-title"><h2>行为热力矩阵</h2><span>访问 / 搜索 / 加购 / 购买</span></div>
+          <canvas id="eventHeatmap"></canvas>
+        </article>
+
+        <article class="panel panel-bottom-right glow-frame data-panel">
+          <div class="panel-title"><h2>数据资产舱</h2><span>Parquet 元数据</span></div>
+          <div class="asset-table">
+            <table>
+              <thead><tr><th>数据表</th><th>行数</th><th>体积</th></tr></thead>
+              <tbody id="assetRows"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <div class="tooltip" id="tooltip"></div>
+    <script type="module" src="enterprise3d.js"></script>
+  </body>
+</html>
