@@ -164,7 +164,7 @@ make enterprise-check
 
 ## 企业级公开数据
 
-项目新增真实公开大规模数据入口，默认选择 RecSys Challenge 2025 / Synerise 在线零售数据集，压缩包约 1.9GB，低于 40GB，下载到项目根目录下的 `external_data/synerise-recsys-2025/`。
+项目新增真实公开大规模数据入口，默认选择 RecSys Challenge 2025 / Synerise 在线零售数据集，压缩包约 1.9GB，下载到项目根目录下的 `external_data/synerise-recsys-2025/`。
 
 ```powershell
 python scripts/download_public_data.py --dataset synerise-recsys-2025 --extract
@@ -294,26 +294,6 @@ python scripts/run_quality_checks.py --input data --output reports/data_quality_
 3. 留存、复购、RFM 属于用户视角指标，需要和交易事实表正确关联。
 4. 本地项目既要能跑通，又要保留真实数仓项目的分层和性能优化思想。
 5. 数据质量检查要覆盖业务规则，而不只是检查文件是否存在。
-
-## 简历写法
-
-RetailPulse 电商零售离线湖仓与经营分析平台：
-
-- 独立设计电商零售业务数据模型，覆盖用户、商品、店铺、订单、支付、退款、行为和库存等主题。
-- 使用 PySpark 构建 ODS/DWD/DIM/DWS/ADS 离线数仓链路，基于 Parquet 和 `dt` 分区模拟湖仓存储。
-- 实现 GMV、支付转化率、客单价、退款率、复购率、留存、商品 TopN、RFM 用户分层和库存周转等核心指标。
-- 引入主键重复、金额一致性、时间顺序、维表关联、分区完整性等数据质量校验，并输出 Markdown 报告。
-- 在 Spark 作业中使用 broadcast join、persist、分区裁剪和小文件控制等优化手段，支持本地和可扩展集群模式。
-
-## 3 分钟面试讲解稿
-
-这个项目是我独立设计的电商零售离线湖仓项目，业务上模拟一家电商平台每天产生用户、商品、订单、支付、退款、行为和库存数据。项目目标是把这些源数据加工成可用于经营分析的指标体系。
-
-技术上，我用 Python 生成 90 天模拟数据，用 PySpark 构建从 raw 到 ODS、DWD、DIM、DWS、ADS 的完整链路。ODS 保留原始结构，DWD 做去重、状态标准化和金额校验，DIM 沉淀用户、商品、店铺、品类和日期维度，DWS 做交易、用户、商品、店铺、品类、留存和库存主题汇总，ADS 输出看板指标。
-
-指标上，我实现了 GMV、订单量、支付金额、支付转化率、客单价、退款率、复购率、次日和 7 日留存、商品和品类 TopN、店铺排行、RFM 用户分层和库存周转率。项目还包含数据质量检查，例如主键重复、关键字段为空、支付时间早于下单时间、退款金额大于支付金额、维表关联缺失和每日分区为空。
-
-性能方面，我使用 Parquet 存储、`dt` 分区、broadcast join、persist 和输出文件数控制。这个项目虽然可以在 Windows 本地跑通 tiny 规模，但设计上保留了迁移到 Spark 集群和对象存储的扩展路径。
 
 ## 文档入口
 
