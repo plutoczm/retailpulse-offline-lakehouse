@@ -1,0 +1,63 @@
+# Data pipeline outputs (heavy, not needed for dashboard)
+data/raw/
+data/ods/
+data/dwd/
+data/dim/
+data/dws/
+data/ads/
+data_synerise_smoke/
+
+# External datasets
+external_data/
+
+# Enterprise configs
+configs/
+
+# Python cache and env
+__pycache__/
+.venv/
+*.pyc
+*.pyo
+
+# Spark/Hadoop runtime
+.runtime/
+
+# Docker
+docker-compose.yml
+
+# Tests
+tests/
+
+# Docs (keep for reference, but not deployed)
+docs/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Reports
+reports/
+
+# Enterprise scripts
+scripts/setup_*.ps1
+scripts/apply_*.ps1
+scripts/check_*.ps1
+scripts/download_*.py
+scripts/run_all.py
+scripts/run_quality_checks.py
+scripts/run_synerise_pipeline.py
+scripts/serve_dashboard.py
+scripts/export_dashboard_data.py
+
+# Specific job files (PySpark jobs)
+jobs/
+
+# Python config
+pyproject.toml
+.env.example
+.env.enterprise.example
+Makefile

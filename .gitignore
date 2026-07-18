@@ -43,3 +43,4 @@ reports/*.jpeg
 !data/ads/.gitkeep
 !dashboard/data/.gitkeep
 !reports/*.md
+.vercel

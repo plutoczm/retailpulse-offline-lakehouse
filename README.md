@@ -192,16 +192,60 @@ python scripts/run_synerise_pipeline.py --data-root data_synerise_smoke --limit-
 
 大屏位于 `dashboard/index.html`，读取 ADS 指标导出的 `dashboard/data/dashboard.json`。当前版本是全中文字体的企业级 3D 沉浸式数据指挥中心，采用 `100vw × 100vh` 全屏驾驶舱布局和微软雅黑优先字体栈，包含 WebGL 粒子/光线背景、悬浮发光图表面板、中心转化核心、折线/面积/3D 柱状/散点/热力图、日期筛选、指标筛选、纵深调节、悬停 tooltip 和图表联动。
 
+### 一键启动 Dashboard
+
+Windows 在项目根目录双击 `start.cmd`，或执行：
+
 ```powershell
-python scripts/export_dashboard_data.py --data-root data --external-root external_data/synerise-recsys-2025/extracted --output dashboard/data/dashboard.json --topn 10
-python scripts/serve_dashboard.py --port 8508
+.\start.cmd
 ```
 
-浏览器打开：
+脚本会自动查找 Conda、创建缺失的 `retailpulse-lakehouse` 环境、生成 Dashboard 数据、启动服务并打开浏览器。也可以通过 npm 使用同一入口：
+
+```powershell
+npm run start
+```
+
+三种启动模式：
+
+```powershell
+# 仅本机访问
+.\start.cmd
+
+# 同一局域网内的其他电脑或手机访问
+.\start.cmd lan
+
+# 直接打开 Vercel 公网版本，跨网络访问且本机无需运行服务
+.\start.cmd public
+```
+
+公网固定地址：
+
+```text
+https://retailpulse-offline-lakehouse.vercel.app
+```
+
+需要重新从本地湖仓结果导出真实 Dashboard 数据时：
+
+```powershell
+python scripts/export_dashboard_data.py --data-root data --external-root external_data/synerise-recsys-2025/extracted --output dashboard/data/dashboard.json --topn 10
+```
+
+需要以前台方式调试本地服务时：
+
+```powershell
+npm run dev
+```
+
+本机访问地址：
 
 ```text
 http://127.0.0.1:8508
 ```
+
+`lan` 模式会绑定 `0.0.0.0` 并在终端列出当前电脑的局域网 IPv4 地址；它只适用于同一局域网。位于不同网络的设备应使用上面的 Vercel 公网地址，不需要配置路由器端口映射。
+
+启动器不会把项目数据或运行缓存写入 C 盘用户目录：湖仓数据位于项目的 `data/`，Dashboard 数据位于 `dashboard/data/`，日志、PID、Spark 临时文件、Python/pip/Conda 缓存位于项目的 `.runtime/`。如果新机器上只存在 C 盘的同名环境，而项目本身位于其他磁盘，启动器会忽略该环境，并在项目的 `.runtime/conda-env/` 中创建项目专属环境。当前机器已有的 `D:\Anaconda\envs\retailpulse-lakehouse` 会继续复用。
 
 等价 Makefile：
 
@@ -294,6 +338,43 @@ python scripts/run_quality_checks.py --input data --output reports/data_quality_
 3. 留存、复购、RFM 属于用户视角指标，需要和交易事实表正确关联。
 4. 本地项目既要能跑通，又要保留真实数仓项目的分层和性能优化思想。
 5. 数据质量检查要覆盖业务规则，而不只是检查文件是否存在。
+
+## 🚀 Deploy to Vercel
+
+The 3D dashboard is designed to be deployed as a static site on Vercel. The PySpark/ETL pipeline runs locally or on a data platform — Vercel hosts the visualization layer.
+
+Production URL: https://retailpulse-offline-lakehouse.vercel.app
+
+### Quick Deploy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/plutoczm/retailpulse-offline-lakehouse)
+
+Or manually:
+
+```bash
+# 1. Generate dashboard data (Python stdlib only, no PySpark needed)
+python scripts/generate_vercel_data.py
+
+# 2. Deploy dashboard/ as static site
+vercel --cwd .
+
+# Or link and deploy
+vercel link
+vercel deploy
+```
+
+### Configuration
+
+| File | Purpose |
+|---|---|
+| `vercel.json` | Sets `dashboard/` as output directory, configures caching |
+| `scripts/generate_vercel_data.py` | Generates sample `dashboard/data/dashboard.json` for demo |
+| `package.json` | Minimal Node.js project for Vercel build |
+| `.vercelignore` | Excludes Spark/Hadoop configs, raw data, tests |
+
+### Architecture Note
+
+The Vercel deployment is the **dashboard visualization layer**. The data pipeline (ODS → DWD → DIM → DWS → ADS) runs offline — export results to `dashboard/data/dashboard.json` for the dashboard to consume.
 
 ## 文档入口
 
