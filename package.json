@@ -1,0 +1,16 @@
+{
+  "name": "retailpulse-dashboard",
+  "version": "1.0.0",
+  "description": "RetailPulse 电商零售离线湖仓经营分析可视化大屏",
+  "private": true,
+  "scripts": {
+    "build": "python scripts/generate_vercel_data.py",
+    "start": ".\\start.cmd",
+    "start:lan": ".\\start.cmd lan",
+    "start:public": ".\\start.cmd public",
+    "dev": ".\\start.cmd local -Foreground -NoOpen"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}
