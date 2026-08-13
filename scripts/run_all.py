@@ -161,6 +161,7 @@ def main() -> None:
                 args.start_date,
                 "--end-date",
                 end,
+                "--fail-on-error",
             ]
         )
 
