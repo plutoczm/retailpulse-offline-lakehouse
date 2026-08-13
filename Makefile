@@ -1,4 +1,4 @@
-.PHONY: install install-api install-data lint test ai-eval api demo-data dashboard-data \
+.PHONY: install install-api install-data lint test test-api test-data ai-eval api demo-data \
 	windows-setup public-data synerise-all synerise-smoke generate ods dwd dim dws ads quality all clean
 
 PYTHON ?= python
@@ -9,7 +9,6 @@ DT ?= 2025-03-31
 SCALE ?= tiny
 SYNERISE_INPUT ?= external_data/synerise-recsys-2025/extracted
 SYNERISE_TABLES ?= all
-SYNERISE_LIMIT ?= 0
 SYNERISE_OUTPUT_PARTITIONS ?= 96
 SYNERISE_START_DATE ?= 2022-06-23
 SYNERISE_END_DATE ?= 2022-12-08
@@ -18,16 +17,22 @@ install:
 	$(PYTHON) -m pip install -r requirements.txt
 
 install-api:
-	$(PYTHON) -m pip install -r requirements-api.txt
+	$(PYTHON) -m pip install -r requirements-api.txt -r requirements-dev.txt
 
 install-data:
-	$(PYTHON) -m pip install -r requirements-data.txt
+	$(PYTHON) -m pip install -r requirements-data.txt -r requirements-dev.txt
 
 lint:
-	ruff check app scripts/run_ai_evals.py scripts/generate_demo_data.py tests/test_ai_*.py tests/test_api.py
+	ruff check app scripts/run_ai_evals.py scripts/generate_demo_data.py tests/test_ai_*.py tests/test_api.py tests/test_runtime_controls.py
 
 test:
 	pytest
+
+test-api:
+	pytest tests/test_ai_retrieval.py tests/test_ai_service.py tests/test_api.py tests/test_runtime_controls.py
+
+test-data:
+	pytest tests/test_data_generator.py tests/test_data_quality.py tests/test_metric_logic.py
 
 ai-eval:
 	$(PYTHON) scripts/run_ai_evals.py --threshold 0.95

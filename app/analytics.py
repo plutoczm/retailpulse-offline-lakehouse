@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -8,28 +10,32 @@ from app.catalog import METRIC_CATALOG
 
 
 class MetricsUnavailableError(RuntimeError):
-    """Raised when neither production nor demo metrics are available."""
+    """Raised when trusted metrics cannot be loaded or validated."""
 
 
 class MetricsRepository:
-    def __init__(self, primary_path: Path, fallback_path: Path) -> None:
+    def __init__(
+        self,
+        primary_path: Path,
+        fallback_path: Path,
+        allow_fallback: bool = True,
+    ) -> None:
         self.primary_path = Path(primary_path)
         self.fallback_path = Path(fallback_path)
+        self.allow_fallback = allow_fallback
         self._cached_path: Path | None = None
         self._cached_mtime_ns: int | None = None
         self._cached_payload: dict[str, Any] | None = None
 
-    def _resolve_path(self) -> Path:
+    def _resolve_path(self) -> tuple[Path, str]:
         if self.primary_path.exists():
-            return self.primary_path
-        if self.fallback_path.exists():
-            return self.fallback_path
-        raise MetricsUnavailableError(
-            f"metrics not found: {self.primary_path} or {self.fallback_path}"
-        )
+            return self.primary_path, "lakehouse"
+        if self.allow_fallback and self.fallback_path.exists():
+            return self.fallback_path, "demo"
+        raise MetricsUnavailableError("trusted metrics are unavailable")
 
     def load(self) -> dict[str, Any]:
-        path = self._resolve_path()
+        path, source_kind = self._resolve_path()
         mtime_ns = path.stat().st_mtime_ns
         if (
             self._cached_payload is not None
@@ -38,26 +44,35 @@ class MetricsRepository:
         ):
             return self._cached_payload
 
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        raw = path.read_bytes()
+        payload = json.loads(raw)
         if not isinstance(payload.get("kpis"), dict):
-            raise MetricsUnavailableError(f"invalid metrics payload: {path}")
+            raise MetricsUnavailableError("metrics payload failed schema validation")
         if not isinstance(payload.get("daily", []), list):
-            raise MetricsUnavailableError(f"invalid daily series: {path}")
+            raise MetricsUnavailableError("metrics daily series failed schema validation")
 
         payload["_source"] = str(path)
+        payload["_source_kind"] = source_kind
+        payload["_data_version"] = hashlib.sha256(raw).hexdigest()[:16]
         self._cached_path = path
         self._cached_mtime_ns = mtime_ns
         self._cached_payload = payload
         return payload
 
-    def public_snapshot(self) -> dict[str, Any]:
+    def metadata(self) -> dict[str, Any]:
         payload = self.load()
         return {
             "source": payload["_source"],
+            "source_kind": payload["_source_kind"],
+            "data_version": payload["_data_version"],
             "generated_at": payload.get("generated_at"),
             "latest_dt": payload.get("latest_dt"),
-            "kpis": payload["kpis"],
+            "age_seconds": _age_seconds(payload.get("generated_at")),
         }
+
+    def public_snapshot(self) -> dict[str, Any]:
+        payload = self.load()
+        return {**self.metadata(), "kpis": payload["kpis"]}
 
     def build_evidence(
         self,
@@ -87,6 +102,19 @@ class MetricsRepository:
             evidence.append(item)
 
         return evidence
+
+
+def _age_seconds(value: str | None) -> float | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        age = datetime.now(timezone.utc) - parsed.astimezone(timezone.utc)
+        return round(max(age.total_seconds(), 0.0), 2)
+    except ValueError:
+        return None
 
 
 def _daily_metric_value(metric: str, row: dict[str, Any]) -> float | None:

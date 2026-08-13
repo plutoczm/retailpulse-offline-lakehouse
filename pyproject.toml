@@ -1,12 +1,13 @@
 [project]
 name = "retailpulse-ai-analyst"
-version = "0.2.0"
+version = "0.3.0"
 description = "Grounded AI retail analytics copilot backed by a PySpark lakehouse."
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.115.0,<1.0.0",
     "uvicorn>=0.30.0,<1.0.0",
     "openai>=1.68.0,<3.0.0",
+    "prometheus-client>=0.21.0,<1.0.0",
 ]
 
 [project.optional-dependencies]

@@ -5,9 +5,25 @@ services:
     ports:
       - "8000:8000"
     environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5}
+      RETAILPULSE_ENV: ${RETAILPULSE_ENV:-development}
       RETAILPULSE_METRICS_PATH: dashboard/data/dashboard.json
       RETAILPULSE_FALLBACK_METRICS_PATH: dashboard/data/demo.json
+      RETAILPULSE_ALLOW_DEMO_FALLBACK: ${RETAILPULSE_ALLOW_DEMO_FALLBACK:-true}
+      RETAILPULSE_METRICS_MAX_AGE_SECONDS: ${RETAILPULSE_METRICS_MAX_AGE_SECONDS:-0}
+      RETAILPULSE_API_KEY: ${RETAILPULSE_API_KEY:-}
+      RETAILPULSE_RATE_LIMIT_PER_MINUTE: ${RETAILPULSE_RATE_LIMIT_PER_MINUTE:-30}
+      RETAILPULSE_RESPONSE_CACHE_TTL_SECONDS: ${RETAILPULSE_RESPONSE_CACHE_TTL_SECONDS:-60}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5}
     volumes:
       - ./dashboard/data:/app/dashboard/data:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).read()"
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
