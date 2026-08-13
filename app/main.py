@@ -16,7 +16,6 @@ from app.llm import DeterministicProvider, OpenAIProvider
 from app.models import AskRequest, AskResponse, MetricsResponse
 from app.service import AnalystService
 
-
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("retailpulse.api")
 settings = load_settings()

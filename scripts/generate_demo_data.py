@@ -6,7 +6,6 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 DAILY = [
     {"dt": "2025-01-01", "order_count": 1000, "pay_order_count": 860, "gmv": 245000.0, "pay_amount": 207000.0, "refund_amount": 6200.0},
     {"dt": "2025-01-02", "order_count": 1040, "pay_order_count": 900, "gmv": 252000.0, "pay_amount": 216500.0, "refund_amount": 6100.0},
