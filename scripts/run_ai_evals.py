@@ -4,9 +4,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
-from app.catalog import METRIC_CATALOG, select_metric_keys
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from app.catalog import METRIC_CATALOG, select_metric_keys  # noqa: E402
 
 
 def evaluate(cases: list[dict], top_k: int) -> dict:

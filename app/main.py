@@ -89,7 +89,7 @@ def healthz() -> dict[str, str]:
 
 
 @app.get("/readyz")
-def readyz() -> JSONResponse | dict[str, str]:
+def readyz():
     try:
         repository.load()
     except MetricsUnavailableError as exc:
