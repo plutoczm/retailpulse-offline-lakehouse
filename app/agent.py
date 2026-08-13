@@ -7,7 +7,7 @@ from typing import Any
 from app.catalog import METRIC_CATALOG, select_metric_keys
 from app.models import QueryPlan, ToolCall, ToolResult
 
-PLANNER_VERSION = "rules-v1"
+PLANNER_VERSION = "rules-v2"
 SUPPORTED_TOOLS = (
     "get_kpi",
     "compare_periods",
@@ -19,20 +19,21 @@ SUPPORTED_DIMENSIONS = (
     "product",
     "category",
     "shop",
+    "channel",
     "refund_reason",
     "user_segment",
 )
-KNOWN_COVERAGE_GAPS = ("channel", "campaign", "region")
+KNOWN_COVERAGE_GAPS = ("campaign", "region")
 
 _DIMENSION_KEYWORDS = {
     "product": ("商品", "产品", "sku", "product"),
     "category": ("品类", "类目", "category"),
     "shop": ("店铺", "门店", "shop", "store"),
+    "channel": ("渠道", "获客渠道", "channel"),
     "refund_reason": ("退款原因", "退货原因", "refund reason"),
     "user_segment": ("用户分层", "用户群", "rfm", "segment"),
 }
 _GAP_KEYWORDS = {
-    "channel": ("渠道", "channel"),
     "campaign": ("活动", "campaign", "promotion"),
     "region": ("地区", "区域", "地域", "region", "province"),
 }
@@ -138,11 +139,13 @@ class QueryPlanner:
 
         if dimensions:
             for dimension in dimensions[:2]:
+                preferred_metric = metrics[0] if metrics else None
                 calls.append(
                     self._dimension_call(
                         dimension=dimension,
                         ranking=ranking,
                         top_k=top_k,
+                        preferred_metric=preferred_metric,
                     )
                 )
         elif diagnostic:
@@ -163,6 +166,7 @@ class QueryPlanner:
         dimension: str,
         ranking: bool,
         top_k: int,
+        preferred_metric: str | None,
     ) -> ToolCall:
         tool = "get_topn" if ranking else "breakdown_by_dimension"
         verb = "返回受控 Top-N" if ranking else "下钻经营表现"
@@ -171,6 +175,7 @@ class QueryPlanner:
             _dimension_arguments(
                 dimension,
                 limit=min(max(top_k, 1), 10),
+                preferred_metric=preferred_metric,
             ),
             f"按 {dimension} {verb}",
         )
@@ -338,6 +343,8 @@ class RetailToolbox:
             return _insufficient(call, payload, f"{dimension} serving mart 暂无数据")
 
         metric = str(call.arguments.get("metric") or spec["metric"])
+        if metric not in spec["allowed_metrics"]:
+            raise ValueError(f"metric {metric} is not allowed for dimension {dimension}")
         rows = sorted(
             rows,
             key=lambda row: _numeric(row.get(metric)),
@@ -431,11 +438,17 @@ def _contains(text: str, keywords: tuple[str, ...]) -> bool:
 def _dimension_arguments(
     dimension: str,
     limit: int,
+    preferred_metric: str | None = None,
 ) -> dict[str, Any]:
     spec = _dimension_spec(dimension)
+    metric = (
+        preferred_metric
+        if preferred_metric in spec["allowed_metrics"]
+        else spec["metric"]
+    )
     return {
         "dimension": dimension,
-        "metric": spec["metric"],
+        "metric": metric,
         "limit": limit,
     }
 
@@ -445,6 +458,7 @@ def _dimension_spec(dimension: str) -> dict[str, Any]:
         "product": {
             "table": "product_topn",
             "metric": "sales_amount",
+            "allowed_metrics": ("sales_amount",),
             "fields": (
                 "product_id",
                 "product_name",
@@ -456,6 +470,7 @@ def _dimension_spec(dimension: str) -> dict[str, Any]:
         "category": {
             "table": "category_topn",
             "metric": "sales_amount",
+            "allowed_metrics": ("sales_amount",),
             "fields": (
                 "category_id",
                 "category_name",
@@ -467,6 +482,7 @@ def _dimension_spec(dimension: str) -> dict[str, Any]:
         "shop": {
             "table": "shop_rank",
             "metric": "sales_amount",
+            "allowed_metrics": ("sales_amount",),
             "fields": (
                 "shop_id",
                 "shop_name",
@@ -476,9 +492,37 @@ def _dimension_spec(dimension: str) -> dict[str, Any]:
             ),
             "note": "店铺数据来自 ADS 排名 serving mart。",
         },
+        "channel": {
+            "table": "channel_summary",
+            "metric": "gmv",
+            "allowed_metrics": (
+                "gmv",
+                "pay_amount",
+                "pay_conversion_rate",
+                "avg_order_value",
+                "refund_rate",
+            ),
+            "fields": (
+                "channel",
+                "order_count",
+                "order_user_count",
+                "pay_order_count",
+                "pay_user_count",
+                "pay_amount",
+                "pay_conversion_rate",
+                "avg_order_value",
+                "refund_amount",
+                "refund_rate",
+            ),
+            "note": (
+                "channel 表示 dim_user 中的用户获客渠道，"
+                "不是单次会话的 source_channel。"
+            ),
+        },
         "refund_reason": {
             "table": "refund_analysis",
             "metric": "refund_amount",
+            "allowed_metrics": ("refund_amount",),
             "fields": (
                 "refund_reason",
                 "refund_status",
@@ -489,6 +533,7 @@ def _dimension_spec(dimension: str) -> dict[str, Any]:
         "user_segment": {
             "table": "rfm_segment",
             "metric": "monetary",
+            "allowed_metrics": ("monetary",),
             "fields": ("user_segment", "user_count"),
         },
     }

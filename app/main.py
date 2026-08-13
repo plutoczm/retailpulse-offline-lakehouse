@@ -57,7 +57,7 @@ limiter = SlidingWindowRateLimiter(settings.rate_limit_per_minute)
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.4.0",
+    version="0.5.0",
     description=(
         "Bounded retail analytics agent backed by trusted lakehouse serving marts."
     ),
@@ -214,7 +214,6 @@ def prometheus_metrics() -> Response:
 
 @app.get("/api/v1/capabilities", response_model=CapabilitiesResponse)
 def capabilities() -> dict:
-    """Expose the bounded tool surface without revealing implementation secrets."""
     return agent_capabilities()
 
 

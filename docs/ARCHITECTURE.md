@@ -1,6 +1,6 @@
 # Architecture
 
-RetailPulse 采用 **离线可信数据平面 + 在线受控 AI 分析平面**。核心目标不是让模型自由查询数据库，而是让应用代码定义模型可以看到和执行的事实边界。
+RetailPulse 采用 **离线可信数据平面 + 在线受控 AI 分析平面**。
 
 ```mermaid
 flowchart TB
@@ -27,45 +27,36 @@ flowchart TB
   end
 
   EV[Retrieval + Tool Routing Evals] --> CI[GitHub Actions]
-  TS[pytest] --> CI
   Q --> CI
   CI --> DS[Docker Smoke]
 ```
 
 ## 关键边界
 
-1. **Spark 只跑离线计算。** FastAPI 在线服务不启动 JVM/Spark，避免把批处理依赖和在线延迟耦合。
-2. **Serving snapshot 是在线数据契约。** ADS 表由导出脚本转成轻量 JSON，API 使用内容 hash 作为 `data_version`。
-3. **Planner 不生成任意 SQL。** Planner 只能选择预定义工具和受控参数，不能指定表名、路径、Python 代码或 SQL 字符串。
-4. **Toolbox 是事实执行边界。** 当前只允许 KPI、分期对比、维度下钻、Top-N、异常检测。
-5. **LLM 只看到成功工具结果。** 每个结果带唯一 `evidence_key`；模型 observation 必须引用实际执行过的 key。
-6. **缺失能力显式失败。** `channel`、`campaign`、`region` 等当前未进入 serving mart 的维度被返回为 coverage gap，不由模型猜测。
-7. **在线和离线各自有 CI 门禁。** AI service、Docker 包装、Spark lakehouse 分开验证。
+1. Spark 只跑离线计算，FastAPI 在线服务不启动 Spark/JVM。
+2. ADS 导出成轻量 serving snapshot，内容 hash 作为 `data_version`。
+3. Planner 不能生成任意 SQL、表名、路径或代码，只能选择白名单工具。
+4. LLM 只看到成功的 ToolResult，并且每条 observation 必须引用本次 `evidence_key`。
+5. 缺失维度显式进入 `coverage_gaps`，不让模型补造。
+6. AI service、Docker image、Spark lakehouse 在 CI 中分开验证。
 
-## Runtime data flow
+## Channel data contract
+
+原始用户数据中的 `channel` 被定义为 **用户获客渠道**。`dim_user` 保留该字段，DWS 将订单、支付、退款事实按 `user_id -> channel` 聚合：
 
 ```text
-question
-  -> QueryPlanner.plan()
-  -> QueryPlan(calls, coverage_gaps)
-  -> RetailToolbox.execute()
-  -> ToolResult[]
-  -> LLMProvider.generate(trusted_context)
-  -> AnalysisContent
-  -> grounding validation
-  -> API response(plan + tool_results + analysis + evidence)
+dim_user.channel
+  + dwd order/payment/refund
+  -> dws_channel_day_summary
+  -> ads_channel_summary
+  -> dashboard.json.channel_summary
+  -> breakdown_by_dimension(channel)
 ```
+
+它与行为事件里的 `source_channel`（单次访问/事件来源）不是同一个口径。当前 Agent 支持 acquisition channel；若未来做 session attribution，需要单独建行为归因模型，不能混用两者。
 
 ## 为什么没有让 LLM 直接 Text-to-SQL
 
-当前项目的目标是经营分析服务，而不是通用数据库助手。直接让模型生成 SQL 会扩大风险面：
+直接 Text-to-SQL 会扩大 schema 泄露、权限、资源扫描、指标口径绕过和 eval 空间。当前业务域优先使用 bounded tools。未来需要 ad-hoc 查询时，更合理的升级方向是受控 semantic query DSL，由后端编译成参数化 SQL。
 
-- schema/table 泄露；
-- 不受控扫描导致延迟和成本不可预测；
-- 指标口径容易被绕开；
-- 权限隔离、SQL 注入和资源治理复杂度显著上升；
-- eval 很难覆盖任意查询空间。
-
-因此当前选择 **bounded tools over arbitrary SQL**。当需要更灵活的 ad-hoc 查询时，可以新增受控 semantic query DSL，由服务端编译成参数化 SQL，而不是把 SQL 生成权直接交给模型。
-
-详细工具契约见 `ANALYTICS_AGENT.md`，生产运行约束见 `OPERATIONS.md`。
+详细见 `ANALYTICS_AGENT.md` 与 `OPERATIONS.md`。

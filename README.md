@@ -1,11 +1,11 @@
 # RetailPulse Analytics Agent
 
-> 面向 AI 应用开发岗位的生产型作品集：**PySpark 湖仓负责可信数据，受控 Analytics Agent 负责查询规划与工具执行，LLM 只基于真实工具结果生成可追溯经营洞察。**
+> 面向 AI 应用开发岗位的工程化作品集：**PySpark 湖仓负责可信数据，受控 Analytics Agent 负责查询规划与工具执行，LLM 只基于真实工具结果生成可追溯经营洞察。**
 
-RetailPulse 不以“组件数量”证明工程化。核心链路是：
+## 核心链路
 
 ```text
-离线零售数据
+Raw / Public Retail Data
   -> ODS / DWD / DIM / DWS / ADS
   -> Data Quality Gate
   -> Versioned Serving Snapshot
@@ -18,70 +18,83 @@ RetailPulse 不以“组件数量”证明工程化。核心链路是：
   -> pytest + eval + Docker CI
 ```
 
-## 为什么这个项目适合 AI 应用开发岗
+## 项目亮点
 
-- **真实数据工程底座**：PySpark ODS→DWD→DIM→DWS→ADS，而不是把一份静态 CSV 包装成聊天机器人。
-- **Agent 有真实执行能力**：问题会被拆成受控计划并调用 KPI、分期对比、维度下钻、Top-N、异常检测工具。
-- **Grounded by construction**：LLM 只看到成功执行的工具结果；每个 observation 必须引用本次 `evidence_key`。
-- **拒绝“万能 Agent”叙事**：不开放任意 SQL、文件路径或代码执行；不支持的维度明确返回 coverage gap。
-- **可降级**：没有 API Key 或外部模型失败时使用 deterministic provider，CI 不依赖模型网络调用。
-- **可运营**：request id、结构化日志、Prometheus、API key、rate limit、version-aware cache、readiness/freshness gate。
-- **可部署**：在线 Docker 镜像不包含 Spark/JVM，批处理和在线服务依赖边界清晰。
-- **可评估**：retrieval eval + tool-routing eval + unit/API tests + Docker smoke + Spark end-to-end quality gate。
+- **真实数据底座**：完整 PySpark ODS→DWD→DIM→DWS→ADS，而不是静态 CSV 聊天 Demo。
+- **真实 Agent 执行链**：`get_kpi`、`compare_periods`、`breakdown_by_dimension`、`get_topn`、`detect_anomaly`。
+- **真实多维分析**：product / category / shop / **channel** / refund_reason / user_segment。
+- **渠道能力贯穿数据链**：`dim_user.channel -> dws_channel_day_summary -> ads_channel_summary -> serving JSON -> Agent tool`。
+- **Grounded by construction**：LLM observation 必须引用本次成功 ToolResult 的 `evidence_key`。
+- **明确能力边界**：当前不支持 `campaign`、`region`，API 返回 coverage gap，不让模型猜。
+- **生产运行控制**：request ID、JSON 日志、Prometheus、API key、rate limit、version-aware cache、freshness readiness。
+- **可降级**：无 API Key 或模型失败时使用 deterministic provider；CI 不依赖外部模型。
+- **在线/离线解耦**：Docker API 镜像不包含 Spark/JVM。
+- **多层 Eval**：retrieval recall、tool-routing recall、Agent/API tests、Docker smoke、Spark 数据单测和 tiny pipeline quality gate。
+
+## Agent 为什么不是 Text-to-SQL
+
+当前服务面向稳定的经营分析域。Planner 只能选择白名单工具和受控参数，模型不能提供 SQL、路径、代码或任意表名。这样可以控制：
+
+- 指标口径；
+- 数据权限和暴露面；
+- 查询延迟和成本；
+- 资源扫描范围；
+- eval 空间；
+- 失败归因。
+
+需要更灵活的 ad-hoc 分析时，优先增加 semantic query DSL 并由后端编译参数化 SQL，而不是直接把数据库执行权交给模型。
 
 ## 架构
 
 ```mermaid
 flowchart LR
-  A[Raw / Public Retail Data] --> B[PySpark ODS/DWD/DIM/DWS]
+  A[Raw Data] --> B[PySpark ODS/DWD/DIM/DWS]
   B --> C[ADS Serving Tables]
-  C --> Q[Data Quality Gate]
-  Q --> D[Versioned Snapshot JSON]
-
-  U[User Question] --> P[Bounded Planner]
-  D --> R[Metrics Repository]
-  P --> T[Analytics Toolbox]
-  R --> T
-  T --> E[Trusted Tool Results]
-  E --> L[OpenAI / Deterministic Provider]
+  C --> Q[Quality Gate]
+  Q --> D[Versioned Snapshot]
+  U[Question] --> P[Bounded Planner]
+  D --> T[Controlled Toolbox]
+  P --> T
+  T --> R[Trusted Tool Results]
+  R --> L[LLM / Deterministic Provider]
   L --> G[Grounding Validator]
   G --> API[FastAPI]
-  API --> UI[Explainable Web UI]
-
-  EV[Retrieval + Tool Evals] --> CI[GitHub Actions]
-  Q --> CI
+  API --> UI[Explainable UI]
 ```
 
-详细设计见：
+详见：`docs/ARCHITECTURE.md`、`docs/ANALYTICS_AGENT.md`、`docs/OPERATIONS.md`、`docs/METRICS.md`。
 
-- [`docs/ANALYTICS_AGENT.md`](docs/ANALYTICS_AGENT.md)
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-- [`docs/OPERATIONS.md`](docs/OPERATIONS.md)
-- [`docs/METRICS.md`](docs/METRICS.md)
+## Tool surface
 
-## Agent 工具
+| Tool | 作用 |
+|---|---|
+| `get_kpi` | 当前 KPI |
+| `compare_periods` | 相邻窗口趋势/变化 |
+| `breakdown_by_dimension` | 受控维度下钻 |
+| `get_topn` | Top-N 排名 |
+| `detect_anomaly` | 日序列异常提示 |
 
-| Tool | 用途 | 数据边界 |
-|---|---|---|
-| `get_kpi` | 当前 KPI | 指标目录中的可信 KPI |
-| `compare_periods` | 相邻时间窗口对比 | 日级 serving mart |
-| `breakdown_by_dimension` | 维度下钻 | ADS 聚合结果 |
-| `get_topn` | Top-N 排名 | ADS 排行 serving mart |
-| `detect_anomaly` | 日序列异常提示 | 日级 KPI，至少 5 个观测 |
-
-支持维度：`product`、`category`、`shop`、`refund_reason`、`user_segment`。
-
-当前 coverage gaps：`channel`、`campaign`、`region`。当用户请求这些维度时，API 会显式返回缺失能力，不让模型补造。
-
-查看机器可读能力：
+机器可读能力：
 
 ```bash
 curl http://127.0.0.1:8000/api/v1/capabilities
 ```
 
-## 快速启动
+## Channel 口径
 
-### 1. 本地启动 AI 服务
+`channel` 指用户注册/获客渠道，来自 `dim_user.channel`。它与行为日志里的 `source_channel`（单次访问来源）不同。
+
+渠道 DWS 同时产出：
+
+- order_count / order_user_count / GMV
+- pay_order_count / pay_user_count / pay_amount
+- pay_conversion_rate
+- avg_order_value
+- refund_order_count / refund_amount / refund_rate
+
+因此 Agent 可以回答“按渠道分析 GMV”“按渠道分析支付金额”等问题，而不是只把 channel 写在 prompt 里。
+
+## 快速启动
 
 ```bash
 python -m venv .venv
@@ -91,16 +104,14 @@ python scripts/generate_demo_data.py
 uvicorn app.main:app --reload
 ```
 
-访问：
-
 - UI: `http://127.0.0.1:8000`
 - OpenAPI: `http://127.0.0.1:8000/docs`
 - Readiness: `http://127.0.0.1:8000/readyz`
 - Prometheus: `http://127.0.0.1:8000/metrics`
 
-没有 `OPENAI_API_KEY` 时自动使用 deterministic provider，核心 Agent 仍可完整演示。
+没有 `OPENAI_API_KEY` 时自动使用 deterministic provider，Planner/Tool 主链仍然完整可演示。
 
-### 2. 可选接入 OpenAI
+可选接入 OpenAI：
 
 ```bash
 export OPENAI_API_KEY="..."
@@ -108,71 +119,47 @@ export OPENAI_MODEL="gpt-5"
 uvicorn app.main:app --reload
 ```
 
-### 3. Docker
+Docker：
 
 ```bash
 docker compose up --build
 ```
 
-镜像以非 root 用户运行，并包含 health check。
+## 推荐 Demo 问题
 
-## API 示例
-
-### 趋势分析
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question":"GMV 最近趋势如何？","top_k":3}'
+```text
+GMV 最近趋势如何？
+销售额最高的 Top5 商品是什么？
+为什么最近退款率上升？
+按渠道分析支付金额
+GMV 是否出现异常波动？
+按地区分析 GMV
 ```
 
-Planner 会执行 `get_kpi` + `compare_periods`。
+最后一个问题会明确返回 `region` coverage gap，用于演示系统如何拒绝伪造缺失维度。
 
-### Top-N
+## API 响应可解释性
 
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question":"销售额最高的 Top5 商品是什么？","top_k":5}'
-```
-
-Planner 会执行受控 `get_topn(product, sales_amount)`，不会让模型生成 SQL。
-
-### 诊断
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question":"为什么最近退款率上升？","top_k":5}'
-```
-
-规划会组合 KPI、时间对比和 `refund_reason` 下钻。注意：工具结果可以说明哪些退款原因贡献较大，但不会把相关性描述成已证明的因果。
-
-### 不支持的维度
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question":"按渠道分析 GMV","top_k":3}'
-```
-
-响应的 `plan.coverage_gaps` 会包含 `channel`。
-
-## 响应可解释性
-
-`/api/v1/ask` 同时返回：
+`POST /api/v1/ask` 返回：
 
 ```text
 request_id
-answer
 analysis
   summary
   observations[].evidence_keys
   actions
   caveats
-evidence                 # 兼容 KPI evidence
-plan                     # intent + bounded tool calls + coverage gaps
-tool_results             # 每个工具的状态、data、evidence_key
+plan
+  planner_version
+  intent
+  calls[]
+  coverage_gaps
+tool_results[]
+  tool
+  status
+  data
+  evidence_key
+evidence[]
 provider / model
 warnings
 latency_ms
@@ -180,11 +167,9 @@ cache_hit
 data_version
 ```
 
-因此前端和日志都能重放：**问题为什么触发某个工具、工具实际返回了什么、最终哪条结论引用了哪个结果**。
+前端会展示 Execution Plan、Tool Results 和最终 grounded analysis，而不是隐藏 Agent 过程。
 
-## 数据链路
-
-运行 tiny 全链路：
+## 跑真实湖仓
 
 ```bash
 pip install -r requirements-data.txt -r requirements-dev.txt
@@ -193,20 +178,16 @@ python scripts/run_all.py \
   --start-date 2025-01-01 \
   --days 3 \
   --data-root data
-```
 
-导出在线 serving snapshot：
-
-```bash
 python scripts/export_dashboard_data.py \
   --data-root data \
   --output dashboard/data/dashboard.json \
   --topn 10
 ```
 
-导出内容包括 KPI 日序列、商品/品类 Top-N、店铺排名、RFM、退款原因、库存周转等已有 ADS 资产。在线服务优先使用真实 `dashboard.json`；开发模式可回退 demo snapshot，生产模式可关闭 fallback。
+Serving snapshot 包括核心 KPI、日趋势、渠道汇总、商品/品类 Top-N、店铺排名、RFM、退款原因、库存周转等 ADS 资产。
 
-## 测试与 Eval
+## Test / Eval
 
 ```bash
 make lint
@@ -216,72 +197,41 @@ make tool-eval
 make test-data
 ```
 
-两类 AI eval 分别回答不同问题：
-
-- **retrieval recall**：问题能否召回正确 KPI；
-- **tool routing recall**：Planner 能否选择正确工具/维度并识别 coverage gap。
-
-这两类 gate 都完全离线、确定性，可在每次 PR 中运行。
+- retrieval eval：问题是否召回正确 KPI；
+- tool-routing eval：是否选择正确工具/维度并识别 coverage gap；
+- Spark metric test：验证真实生产表达式，包括 channel aggregation；
+- API test：验证 plan/tool/grounding contract；
+- Docker smoke：镜像启动后发送真实 Agent 请求；
+- tiny pipeline：验证 ODS→DWD→DIM→DWS→ADS + quality gate。
 
 ## CI
 
-GitHub Actions 分成三个真实运行边界：
+GitHub Actions 拆为三条运行边界：
 
-1. **AI service quality**
-   - API + dev dependencies only
-   - Ruff
-   - AI/Agent/API tests
-   - retrieval eval
-   - tool-routing eval
-2. **Container packaging smoke**
-   - Docker build
-   - container start/readiness
-   - 真实 POST Top-N Agent 请求
-   - 校验 plan 和 tool result
-3. **Lakehouse quality and smoke**
-   - Java 17 + data dependencies
-   - 数据单测
-   - tiny ODS→DWD→DIM→DWS→ADS
-   - data quality gate + artifact
+1. **AI service quality**：Ruff、AI/Agent/API tests、retrieval eval、tool-routing eval。
+2. **Container packaging smoke**：build/run image + readiness + 真实 Agent HTTP 请求。
+3. **Lakehouse quality and smoke**：Spark 数据单测 + tiny pipeline + data-quality artifact。
 
-## 运行时工程能力
+## 工程取舍
 
-- `X-Request-ID` request correlation
-- JSON request logs
-- Prometheus request/provider/agent-tool metrics
-- `data_version` 内容 hash
-- TTL/LRU response cache；数据版本变化自动失效
-- 可选 `X-API-Key`
-- sliding-window rate limiting
-- provider failure + grounding failure fallback
-- production freshness readiness gate
-- demo fallback 可在 production 关闭
-- Docker non-root + health check
+当前没有为了简历标签堆 LangChain、Vector DB、Kafka、Redis：
 
-多实例部署时，进程内 cache/rate limiter 应迁移到 Redis；当前单实例方案是显式、可解释的工程取舍，而不是遗漏。
+- 结构化指标不需要 vector retrieval；
+- 当前单实例 cache/rate limiter 不需要 Redis，多实例时再迁移；
+- 没有异步长任务就不引入队列；
+- 小而稳定的 intent 用 deterministic planner 更容易 eval；intent 规模扩大后再升级 structured LLM planner。
 
-## 为什么没有堆 LangChain / Vector DB / Kafka / Redis
-
-当前问题域主要是结构化经营指标。显式 planner + typed tool contract 比引入通用 Agent framework 更容易测试和解释。向量数据库也不适合替代结构化指标计算。
-
-组件只有在解决真实约束时才增加：
-
-- 大量非结构化运营文档出现后，再加 embedding/vector retrieval；
-- 多副本部署后，再加 Redis；
-- 需要异步长任务/事件驱动时，再引入队列；
-- 需要更灵活 ad-hoc 查询时，优先做受控 semantic query DSL，而不是直接开放任意 Text-to-SQL。
+每个组件都必须能解释它如何提升准确性、可靠性、可测试性、成本控制或部署能力。
 
 ## 面试重点
 
-1. 为什么数据质量门禁是 AI grounding 的上游组成，而不是纯数据工程细节？
-2. 为什么使用 bounded tools 而不是让 LLM 直接生成 SQL？
-3. `evidence_key` 的二次 grounding validation 防住了什么错误？
-4. 为什么规则 Planner 在这个阶段比 LLM Planner 更合适？什么条件下会升级？
-5. 比例指标做 period comparison 为什么不能直接平均 daily rate？
-6. 为什么在线 API 不依赖 Spark？
-7. 为什么 cache key 必须包含 `data_version` 和 `planner_version`？
-8. 如何区分 routing failure、tool/data failure 和 synthesis failure？
-9. production 模式为什么要 fail closed，而不是偷偷使用 demo 数据？
-10. 如果要支持“按渠道分析 GMV”，应该先改哪里：prompt、Agent 还是 DWS/ADS 数据模型？
-
-这套问题能把项目讨论从“用了什么框架”推进到 **数据契约、Agent 控制面、可靠性、eval 和生产 trade-off**。
+1. 为什么 Data Quality Gate 是 AI grounding 的上游组成？
+2. bounded tools 相比 Text-to-SQL 解决了什么问题？
+3. `evidence_key` 的二次校验防住什么 hallucination？
+4. 为什么当前用规则 Planner，什么时候升级 LLM Planner？
+5. 比例指标做时间对比为什么不能平均 daily rate？
+6. channel 为什么要先从 DIM/DWS/ADS 建模，而不是改 prompt？
+7. acquisition `channel` 与 event `source_channel` 有何区别？
+8. cache key 为什么包含 `data_version` 和 `planner_version`？
+9. 如何区分 routing、tool/data、provider/synthesis 三类失败？
+10. 为什么 production 要 fail closed，不能偷偷回退 demo 数据？

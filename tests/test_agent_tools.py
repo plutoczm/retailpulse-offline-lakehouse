@@ -23,6 +23,34 @@ def _payload() -> dict:
             "refund_rate": 0.0316,
         },
         "daily": daily,
+        "channel_summary": [
+            {
+                "channel": "social",
+                "gmv": 500,
+                "pay_amount": 420,
+                "pay_conversion_rate": 0.90,
+                "avg_order_value": 21.0,
+                "refund_rate": 0.03,
+                "order_count": 20,
+                "order_user_count": 18,
+                "pay_order_count": 18,
+                "pay_user_count": 17,
+                "refund_amount": 12.6,
+            },
+            {
+                "channel": "organic",
+                "gmv": 400,
+                "pay_amount": 350,
+                "pay_conversion_rate": 0.85,
+                "avg_order_value": 20.59,
+                "refund_rate": 0.02,
+                "order_count": 20,
+                "order_user_count": 19,
+                "pay_order_count": 17,
+                "pay_user_count": 16,
+                "refund_amount": 7.0,
+            },
+        ],
         "product_topn": [
             {"product_id": "p1", "product_name": "A", "sales_amount": 500, "sales_quantity": 5, "buyer_count": 4},
             {"product_id": "p2", "product_name": "B", "sales_amount": 300, "sales_quantity": 4, "buyer_count": 3},
@@ -59,9 +87,30 @@ def test_planner_diagnoses_refund_with_reason_breakdown() -> None:
     )
 
 
-def test_planner_surfaces_unsupported_channel_dimension() -> None:
-    plan = QueryPlanner().plan("按渠道分析 GMV", _payload())
-    assert "channel" in plan.coverage_gaps
+def test_channel_is_a_real_supported_serving_dimension() -> None:
+    payload = _payload()
+    plan = QueryPlanner().plan("按渠道分析支付金额", payload)
+    call = next(
+        call
+        for call in plan.calls
+        if call.tool == "breakdown_by_dimension"
+        and call.arguments["dimension"] == "channel"
+    )
+    assert call.arguments["metric"] == "pay_amount"
+
+    result = next(
+        result
+        for result in RetailToolbox().execute(plan, payload)
+        if result.tool == "breakdown_by_dimension"
+    )
+    assert result.status == "ok"
+    assert result.data["rows"][0]["channel"] == "social"
+    assert result.data["rows"][0]["pay_amount"] == 420
+
+
+def test_planner_surfaces_unsupported_region_dimension() -> None:
+    plan = QueryPlanner().plan("按地区分析 GMV", _payload())
+    assert "region" in plan.coverage_gaps
 
 
 def test_anomaly_tool_returns_controlled_result() -> None:

@@ -16,6 +16,15 @@ DAILY = [
     {"dt": "2025-01-07", "order_count": 1280, "pay_order_count": 1165, "gmv": 322000.0, "pay_amount": 287500.0, "refund_amount": 7700.0},
 ]
 
+CHANNEL_SUMMARY = [
+    {"channel": "organic", "order_count": 300, "order_user_count": 285, "gmv": 78000.0, "pay_order_count": 276, "pay_user_count": 262, "pay_amount": 70000.0, "pay_conversion_rate": 0.92, "avg_order_value": 253.6232, "refund_order_count": 12, "refund_amount": 1300.0, "refund_rate": 0.018571},
+    {"channel": "paid_search", "order_count": 260, "order_user_count": 247, "gmv": 67000.0, "pay_order_count": 238, "pay_user_count": 226, "pay_amount": 60000.0, "pay_conversion_rate": 0.915385, "avg_order_value": 252.1008, "refund_order_count": 16, "refund_amount": 1800.0, "refund_rate": 0.03},
+    {"channel": "social", "order_count": 240, "order_user_count": 228, "gmv": 61000.0, "pay_order_count": 216, "pay_user_count": 205, "pay_amount": 54000.0, "pay_conversion_rate": 0.9, "avg_order_value": 250.0, "refund_order_count": 15, "refund_amount": 1700.0, "refund_rate": 0.031481},
+    {"channel": "app_store", "order_count": 190, "order_user_count": 182, "gmv": 48000.0, "pay_order_count": 174, "pay_user_count": 166, "pay_amount": 43000.0, "pay_conversion_rate": 0.915789, "avg_order_value": 247.1264, "refund_order_count": 9, "refund_amount": 1000.0, "refund_rate": 0.023256},
+    {"channel": "affiliate", "order_count": 170, "order_user_count": 161, "gmv": 40000.0, "pay_order_count": 153, "pay_user_count": 146, "pay_amount": 35500.0, "pay_conversion_rate": 0.9, "avg_order_value": 232.0261, "refund_order_count": 10, "refund_amount": 1200.0, "refund_rate": 0.033803},
+    {"channel": "offline_event", "order_count": 120, "order_user_count": 115, "gmv": 28000.0, "pay_order_count": 108, "pay_user_count": 103, "pay_amount": 25000.0, "pay_conversion_rate": 0.9, "avg_order_value": 231.4815, "refund_order_count": 6, "refund_amount": 700.0, "refund_rate": 0.028},
+]
+
 PRODUCT_TOPN = [
     {"product_id": "P1001", "product_name": "高蛋白早餐组合", "sales_amount": 42800.0, "sales_quantity": 318, "buyer_count": 286},
     {"product_id": "P1002", "product_name": "智能降噪耳机", "sales_amount": 39100.0, "sales_quantity": 142, "buyer_count": 135},
@@ -75,6 +84,7 @@ def build_payload() -> dict:
             "refund_rate": round(refund_amount / pay_amount, 4),
         },
         "daily": DAILY,
+        "channel_summary": CHANNEL_SUMMARY,
         "product_topn": PRODUCT_TOPN,
         "category_topn": CATEGORY_TOPN,
         "shop_rank": SHOP_RANK,

@@ -44,8 +44,8 @@
         <button class="example-chip" type="button" data-question="GMV 最近趋势如何？">GMV 趋势</button>
         <button class="example-chip" type="button" data-question="销售额最高的 Top5 商品是什么？">Top 商品</button>
         <button class="example-chip" type="button" data-question="为什么最近退款率上升？">退款诊断</button>
-        <button class="example-chip" type="button" data-question="GMV 是否出现异常波动？">异常检测</button>
-        <button class="example-chip" type="button" data-question="按渠道分析 GMV">Coverage Gap</button>
+        <button class="example-chip" type="button" data-question="按渠道分析支付金额">渠道分析</button>
+        <button class="example-chip" type="button" data-question="按地区分析 GMV">Coverage Gap</button>
       </div>
 
       <form id="askForm">
@@ -53,7 +53,7 @@
           id="question"
           rows="3"
           maxlength="1000"
-          placeholder="例如：为什么最近退款率上升？销售额最高的 Top5 商品是什么？"
+          placeholder="例如：按渠道分析支付金额；为什么最近退款率上升？"
           required
         ></textarea>
         <div class="form-actions">
@@ -68,7 +68,6 @@
           <span id="answerLatency"></span>
           <span id="dataVersion"></span>
         </div>
-
         <div class="result-grid">
           <section class="result-card nested-section">
             <p class="eyebrow">Execution plan</p>
@@ -80,17 +79,14 @@
             <div id="analysisBody" class="stack"></div>
           </section>
         </div>
-
         <section class="nested-section">
           <p class="eyebrow">Tool results</p>
           <div id="toolResults" class="tool-grid"></div>
         </section>
-
         <section class="nested-section">
           <p class="eyebrow">Metric evidence</p>
           <div id="evidenceList" class="evidence-list"></div>
         </section>
-
         <div id="warnings" class="warning-box hidden"></div>
       </div>
     </section>

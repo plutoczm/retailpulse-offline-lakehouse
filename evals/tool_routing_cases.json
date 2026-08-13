@@ -25,9 +25,15 @@
   },
   {
     "question": "按渠道分析 GMV",
-    "expected_tools": ["get_kpi"],
-    "expected_dimensions": [],
-    "expected_coverage_gaps": ["channel"]
+    "expected_tools": ["get_kpi", "breakdown_by_dimension"],
+    "expected_dimensions": ["channel"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "question": "按渠道分析支付金额",
+    "expected_tools": ["get_kpi", "breakdown_by_dimension"],
+    "expected_dimensions": ["channel"],
+    "expected_coverage_gaps": []
   },
   {
     "question": "按用户分层看看消费贡献",
@@ -46,5 +52,11 @@
     "expected_tools": ["get_kpi", "compare_periods", "breakdown_by_dimension"],
     "expected_dimensions": ["category"],
     "expected_coverage_gaps": ["campaign"]
+  },
+  {
+    "question": "按地区分析 GMV",
+    "expected_tools": ["get_kpi"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": ["region"]
   }
 ]

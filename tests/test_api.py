@@ -19,10 +19,11 @@ def test_capabilities_expose_bounded_agent_surface() -> None:
     response = client.get("/api/v1/capabilities")
     assert response.status_code == 200
     body = response.json()
-    assert body["planner_version"] == "rules-v1"
+    assert body["planner_version"] == "rules-v2"
     assert "get_topn" in body["tools"]
     assert "category" in body["supported_dimensions"]
-    assert "channel" in body["known_coverage_gaps"]
+    assert "channel" in body["supported_dimensions"]
+    assert "region" in body["known_coverage_gaps"]
 
 
 def test_ask_endpoint_returns_agent_plan_and_grounded_analysis() -> None:
@@ -54,15 +55,33 @@ def test_ask_endpoint_returns_agent_plan_and_grounded_analysis() -> None:
     )
 
 
-def test_agent_surfaces_missing_serving_dimension() -> None:
+def test_agent_executes_channel_breakdown() -> None:
     response = client.post(
         "/api/v1/ask",
-        json={"question": "按渠道分析 GMV", "top_k": 3},
+        json={"question": "按渠道分析 GMV", "top_k": 5},
     )
     assert response.status_code == 200
     body = response.json()
-    assert "channel" in body["plan"]["coverage_gaps"]
-    assert any("channel" in warning for warning in body["warnings"])
+    assert "channel" not in body["plan"]["coverage_gaps"]
+    result = next(
+        item
+        for item in body["tool_results"]
+        if item["tool"] == "breakdown_by_dimension"
+    )
+    assert result["status"] == "ok"
+    assert result["data"]["dimension"] == "channel"
+    assert result["data"]["rows"]
+
+
+def test_agent_surfaces_missing_region_dimension() -> None:
+    response = client.post(
+        "/api/v1/ask",
+        json={"question": "按地区分析 GMV", "top_k": 3},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "region" in body["plan"]["coverage_gaps"]
+    assert any("region" in warning for warning in body["warnings"])
 
 
 def test_prometheus_endpoint_is_exposed() -> None:
