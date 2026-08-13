@@ -15,6 +15,16 @@ def test_health_and_readiness() -> None:
     assert body["source_kind"] in {"lakehouse", "demo"}
 
 
+def test_capabilities_expose_bounded_agent_surface() -> None:
+    response = client.get("/api/v1/capabilities")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["planner_version"] == "rules-v1"
+    assert "get_topn" in body["tools"]
+    assert "category" in body["supported_dimensions"]
+    assert "channel" in body["known_coverage_gaps"]
+
+
 def test_ask_endpoint_returns_agent_plan_and_grounded_analysis() -> None:
     response = client.post(
         "/api/v1/ask",

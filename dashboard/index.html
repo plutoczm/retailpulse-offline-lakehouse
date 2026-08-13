@@ -3,16 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RetailPulse AI Analyst</title>
+  <title>RetailPulse Analytics Agent</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <main class="shell">
     <header class="hero">
       <div>
-        <p class="eyebrow">RetailPulse · AI Application Portfolio</p>
-        <h1>经营数据 AI 分析助手</h1>
-        <p class="subtitle">湖仓指标作为可信数据底座，LLM 只基于检索到的指标证据生成结论。</p>
+        <p class="eyebrow">RetailPulse · Bounded Analytics Agent</p>
+        <h1>经营数据 AI 分析 Agent</h1>
+        <p class="subtitle">
+          PySpark 离线湖仓产出可信 serving mart；在线 Agent 只执行白名单分析工具，
+          再让 LLM 基于工具结果生成结构化经营洞察。
+        </p>
       </div>
       <div id="providerBadge" class="badge">checking...</div>
     </header>
@@ -31,9 +34,18 @@
     <section class="analyst-card">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">Grounded Q&A</p>
-          <h2>问 RetailPulse AI</h2>
+          <p class="eyebrow">Plan → Tools → Grounded Analysis</p>
+          <h2>问 RetailPulse Agent</h2>
         </div>
+        <span id="capabilities" class="muted"></span>
+      </div>
+
+      <div class="examples" aria-label="示例问题">
+        <button class="example-chip" type="button" data-question="GMV 最近趋势如何？">GMV 趋势</button>
+        <button class="example-chip" type="button" data-question="销售额最高的 Top5 商品是什么？">Top 商品</button>
+        <button class="example-chip" type="button" data-question="为什么最近退款率上升？">退款诊断</button>
+        <button class="example-chip" type="button" data-question="GMV 是否出现异常波动？">异常检测</button>
+        <button class="example-chip" type="button" data-question="按渠道分析 GMV">Coverage Gap</button>
       </div>
 
       <form id="askForm">
@@ -41,12 +53,12 @@
           id="question"
           rows="3"
           maxlength="1000"
-          placeholder="例如：支付转化率最近表现如何？退款率是否值得关注？"
+          placeholder="例如：为什么最近退款率上升？销售额最高的 Top5 商品是什么？"
           required
         ></textarea>
         <div class="form-actions">
-          <span class="muted">回答会返回可追溯 evidence，不让模型自行编造指标。</span>
-          <button id="askButton" type="submit">生成经营洞察</button>
+          <span class="muted">不开放任意 SQL、文件路径或代码执行；缺失维度会明确返回 coverage gap。</span>
+          <button id="askButton" type="submit">执行分析</button>
         </div>
       </form>
 
@@ -54,17 +66,37 @@
         <div class="answer-meta">
           <span id="answerProvider"></span>
           <span id="answerLatency"></span>
+          <span id="dataVersion"></span>
         </div>
-        <pre id="answer"></pre>
-        <div>
-          <p class="eyebrow">Evidence</p>
+
+        <div class="result-grid">
+          <section class="result-card nested-section">
+            <p class="eyebrow">Execution plan</p>
+            <div id="planList" class="stack"></div>
+          </section>
+          <section class="result-card nested-section">
+            <p class="eyebrow">Grounded analysis</p>
+            <h3 id="analysisSummary"></h3>
+            <div id="analysisBody" class="stack"></div>
+          </section>
+        </div>
+
+        <section class="nested-section">
+          <p class="eyebrow">Tool results</p>
+          <div id="toolResults" class="tool-grid"></div>
+        </section>
+
+        <section class="nested-section">
+          <p class="eyebrow">Metric evidence</p>
           <div id="evidenceList" class="evidence-list"></div>
-        </div>
+        </section>
+
+        <div id="warnings" class="warning-box hidden"></div>
       </div>
     </section>
 
     <footer>
-      FastAPI · OpenAI Responses API · deterministic fallback · retrieval evals · PySpark lakehouse
+      PySpark lakehouse · bounded query planner · controlled analytics tools · structured LLM output · grounding validation · eval gates
     </footer>
   </main>
   <script src="/app.js" defer></script>

@@ -1,7 +1,7 @@
 [project]
 name = "retailpulse-ai-analyst"
-version = "0.3.0"
-description = "Grounded AI retail analytics copilot backed by a PySpark lakehouse."
+version = "0.4.0"
+description = "Bounded retail analytics agent backed by a trusted PySpark lakehouse."
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.115.0,<1.0.0",

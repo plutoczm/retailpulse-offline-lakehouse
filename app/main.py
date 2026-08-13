@@ -13,11 +13,18 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
+from app.agent import capabilities as agent_capabilities
 from app.analytics import MetricsRepository, MetricsUnavailableError
 from app.cache import ResponseCache
 from app.config import load_settings
 from app.llm import DeterministicProvider, OpenAIProvider
-from app.models import AnalysisContent, AskRequest, AskResponse, MetricsResponse
+from app.models import (
+    AnalysisContent,
+    AskRequest,
+    AskResponse,
+    CapabilitiesResponse,
+    MetricsResponse,
+)
 from app.observability import HTTP_LATENCY, HTTP_REQUESTS
 from app.rate_limit import SlidingWindowRateLimiter
 from app.service import AnalystService
@@ -50,8 +57,10 @@ limiter = SlidingWindowRateLimiter(settings.rate_limit_per_minute)
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.3.0",
-    description="Grounded retail analytics copilot backed by trusted lakehouse metrics.",
+    version="0.4.0",
+    description=(
+        "Bounded retail analytics agent backed by trusted lakehouse serving marts."
+    ),
 )
 
 
@@ -201,6 +210,12 @@ def readyz():
 @app.get("/metrics", include_in_schema=False)
 def prometheus_metrics() -> Response:
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+@app.get("/api/v1/capabilities", response_model=CapabilitiesResponse)
+def capabilities() -> dict:
+    """Expose the bounded tool surface without revealing implementation secrets."""
+    return agent_capabilities()
 
 
 @app.get("/api/v1/metrics", response_model=MetricsResponse)
