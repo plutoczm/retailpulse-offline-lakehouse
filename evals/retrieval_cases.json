@@ -1,0 +1,9 @@
+[
+  {"question": "GMV 最近表现怎么样？", "expected_metrics": ["gmv"]},
+  {"question": "支付金额和实际收入情况如何？", "expected_metrics": ["pay_amount"]},
+  {"question": "支付转化率有没有下降？", "expected_metrics": ["pay_conversion_rate"]},
+  {"question": "客单价 AOV 当前是多少？", "expected_metrics": ["avg_order_value"]},
+  {"question": "复购率值得关注吗？", "expected_metrics": ["repeat_purchase_rate"]},
+  {"question": "退款率最近是否异常？", "expected_metrics": ["refund_rate"]},
+  {"question": "Compare conversion and refund performance.", "expected_metrics": ["pay_conversion_rate", "refund_rate"]}
+]

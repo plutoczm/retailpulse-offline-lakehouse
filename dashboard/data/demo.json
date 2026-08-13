@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-08-13T00:00:00Z",
+  "latest_dt": "2025-01-07",
+  "kpis": {
+    "gmv": 1957500.0,
+    "pay_amount": 1701500.0,
+    "pay_conversion_rate": 0.8848,
+    "avg_order_value": 242.79,
+    "repeat_purchase_rate": 0.184,
+    "refund_rate": 0.0282
+  },
+  "daily": [
+    {"dt": "2025-01-01", "order_count": 1000, "pay_order_count": 860, "gmv": 245000.0, "pay_amount": 207000.0, "refund_amount": 6200.0},
+    {"dt": "2025-01-02", "order_count": 1040, "pay_order_count": 900, "gmv": 252000.0, "pay_amount": 216500.0, "refund_amount": 6100.0},
+    {"dt": "2025-01-03", "order_count": 1090, "pay_order_count": 960, "gmv": 268000.0, "pay_amount": 232000.0, "refund_amount": 6500.0},
+    {"dt": "2025-01-04", "order_count": 1120, "pay_order_count": 985, "gmv": 276500.0, "pay_amount": 238500.0, "refund_amount": 6900.0},
+    {"dt": "2025-01-05", "order_count": 1180, "pay_order_count": 1050, "gmv": 291000.0, "pay_amount": 254000.0, "refund_amount": 7100.0},
+    {"dt": "2025-01-06", "order_count": 1210, "pay_order_count": 1088, "gmv": 303000.0, "pay_amount": 266000.0, "refund_amount": 7400.0},
+    {"dt": "2025-01-07", "order_count": 1280, "pay_order_count": 1165, "gmv": 322000.0, "pay_amount": 287500.0, "refund_amount": 7700.0}
+  ]
+}
