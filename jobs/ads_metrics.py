@@ -72,7 +72,18 @@ def write_table(df: DataFrame, output: Path, table: str, partitions: int = 2) ->
 
 
 def safe_div(numerator: F.Column, denominator: F.Column) -> F.Column:
+    """Return a Spark expression that divides safely when the denominator is zero."""
     return F.when(denominator == 0, F.lit(0.0)).otherwise(numerator / denominator)
+
+
+def rfm_segment(r_score: F.Column, f_score: F.Column, m_score: F.Column) -> F.Column:
+    """Return the production RFM segmentation expression used by ADS."""
+    return (
+        F.when((r_score >= 4) & (f_score >= 4) & (m_score >= 4), F.lit("高价值用户"))
+        .when((r_score >= 4) & (f_score >= 3), F.lit("潜力用户"))
+        .when(r_score <= 2, F.lit("流失风险用户"))
+        .otherwise(F.lit("一般用户"))
+    )
 
 
 def run(args: argparse.Namespace) -> None:
@@ -170,13 +181,7 @@ def run(args: argparse.Namespace) -> None:
             rfm_base.withColumn("r_score", F.when(F.col("recency_days") <= 7, 5).when(F.col("recency_days") <= 30, 4).when(F.col("recency_days") <= 60, 3).when(F.col("recency_days") <= 90, 2).otherwise(1))
             .withColumn("f_score", F.when(F.col("frequency") >= 10, 5).when(F.col("frequency") >= 5, 4).when(F.col("frequency") >= 3, 3).when(F.col("frequency") >= 2, 2).otherwise(1))
             .withColumn("m_score", F.when(F.col("monetary") >= 10000, 5).when(F.col("monetary") >= 5000, 4).when(F.col("monetary") >= 2000, 3).when(F.col("monetary") >= 500, 2).otherwise(1))
-            .withColumn(
-                "user_segment",
-                F.when((F.col("r_score") >= 4) & (F.col("f_score") >= 4) & (F.col("m_score") >= 4), "高价值用户")
-                .when((F.col("r_score") >= 4) & (F.col("f_score") >= 3), "潜力用户")
-                .when(F.col("r_score") <= 2, "流失风险用户")
-                .otherwise("一般用户"),
-            )
+            .withColumn("user_segment", rfm_segment(F.col("r_score"), F.col("f_score"), F.col("m_score")))
             .withColumn("dt", F.col("as_of_dt"))
             .select("user_id", "recency_days", "frequency", "monetary", "r_score", "f_score", "m_score", "user_segment", "dt")
         )
