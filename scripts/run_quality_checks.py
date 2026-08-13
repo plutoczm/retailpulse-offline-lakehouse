@@ -37,6 +37,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", default="reports/data_quality_report.md")
     parser.add_argument("--start-date")
     parser.add_argument("--end-date")
+    parser.add_argument(
+        "--fail-on-error",
+        action="store_true",
+        help="Exit with a non-zero status after writing the report when any data-quality rule fails.",
+    )
     return parser.parse_args()
 
 
@@ -68,6 +73,11 @@ def ensure_windows_hadoop_home() -> None:
 
 def status_from_count(error_count: int) -> str:
     return "PASS" if error_count == 0 else "FAIL"
+
+
+def has_failures(results: list[CheckResult]) -> bool:
+    """Return whether a quality run contains at least one failed rule."""
+    return any(item.status != "PASS" for item in results)
 
 
 def duplicate_count(df: DataFrame, keys: list[str]) -> int:
@@ -256,6 +266,11 @@ def main() -> None:
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(render_report(results), encoding="utf-8")
         LOGGER.info("Data quality report written to %s", output)
+
+        failed_rules = [item.rule_id for item in results if item.status != "PASS"]
+        if args.fail_on_error and failed_rules:
+            LOGGER.error("Data quality gate failed. Failed rules: %s", ", ".join(failed_rules))
+            raise SystemExit(2)
     except Exception:
         LOGGER.exception("Data quality checks failed")
         raise

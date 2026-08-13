@@ -1,7 +1,0 @@
-jobmanager.rpc.address: localhost
-jobmanager.rpc.port: 6123
-jobmanager.memory.process.size: 1024m
-taskmanager.memory.process.size: 1024m
-taskmanager.numberOfTaskSlots: 2
-parallelism.default: 2
-io.tmp.dirs: E:/RetailPulseEnterprise/tmp/flink

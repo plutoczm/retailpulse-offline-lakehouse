@@ -1,391 +1,237 @@
-# RetailPulse：电商零售离线湖仓与经营分析平台
+# RetailPulse Analytics Agent
 
-本项目面向电商零售业务，构建从模拟数据生成、ODS/DWD/DIM/DWS/ADS 分层加工到经营指标分析的离线湖仓项目，用于展示大数据开发、数仓建模、Spark 批处理和数据质量治理能力。
+> 面向 AI 应用开发岗位的工程化作品集：**PySpark 湖仓负责可信数据，受控 Analytics Agent 负责查询规划与工具执行，LLM 只基于真实工具结果生成可追溯经营洞察。**
 
-## 技术栈
+## 核心链路
 
-Python、PySpark、Spark SQL、Parquet、Docker、PostgreSQL/MinIO 可选、Makefile、pytest。
+```text
+Raw / Public Retail Data
+  -> ODS / DWD / DIM / DWS / ADS
+  -> Data Quality Gate
+  -> Versioned Serving Snapshot
+  -> Bounded Query Planner
+  -> Controlled Analytics Tools
+  -> Trusted Tool Results
+  -> Structured LLM Synthesis
+  -> Grounding Validator
+  -> FastAPI / Explainable UI
+  -> pytest + eval + Docker CI
+```
 
-企业级扩展组件：Hadoop、Hive、Spark standalone/YARN 思路、Kafka、Zookeeper、HBase、Flink、Sqoop、Maven。
+## 项目亮点
 
-## 架构图
+- **真实数据底座**：完整 PySpark ODS→DWD→DIM→DWS→ADS，而不是静态 CSV 聊天 Demo。
+- **真实 Agent 执行链**：`get_kpi`、`compare_periods`、`breakdown_by_dimension`、`get_topn`、`detect_anomaly`。
+- **真实多维分析**：product / category / shop / **channel** / refund_reason / user_segment。
+- **渠道能力贯穿数据链**：`dim_user.channel -> dws_channel_day_summary -> ads_channel_summary -> serving JSON -> Agent tool`。
+- **Grounded by construction**：LLM observation 必须引用本次成功 ToolResult 的 `evidence_key`。
+- **明确能力边界**：当前不支持 `campaign`、`region`，API 返回 coverage gap，不让模型猜。
+- **生产运行控制**：request ID、JSON 日志、Prometheus、API key、rate limit、version-aware cache、freshness readiness。
+- **可降级**：无 API Key 或模型失败时使用 deterministic provider；CI 不依赖外部模型。
+- **在线/离线解耦**：Docker API 镜像不包含 Spark/JVM。
+- **多层 Eval**：retrieval recall、tool-routing recall、Agent/API tests、Docker smoke、Spark 数据单测和 tiny pipeline quality gate。
+
+## Agent 为什么不是 Text-to-SQL
+
+当前服务面向稳定的经营分析域。Planner 只能选择白名单工具和受控参数，模型不能提供 SQL、路径、代码或任意表名。这样可以控制：
+
+- 指标口径；
+- 数据权限和暴露面；
+- 查询延迟和成本；
+- 资源扫描范围；
+- eval 空间；
+- 失败归因。
+
+需要更灵活的 ad-hoc 分析时，优先增加 semantic query DSL 并由后端编译参数化 SQL，而不是直接把数据库执行权交给模型。
+
+## 架构
 
 ```mermaid
 flowchart LR
-  Source[Source Data] --> ODS[ODS]
-  ODS --> DWD[DWD]
-  ODS --> DIM[DIM]
-  DWD --> DWS[DWS]
-  DIM --> DWS
-  DWS --> ADS[ADS]
-  ADS --> BI[BI / Report]
+  A[Raw Data] --> B[PySpark ODS/DWD/DIM/DWS]
+  B --> C[ADS Serving Tables]
+  C --> Q[Quality Gate]
+  Q --> D[Versioned Snapshot]
+  U[Question] --> P[Bounded Planner]
+  D --> T[Controlled Toolbox]
+  P --> T
+  T --> R[Trusted Tool Results]
+  R --> L[LLM / Deterministic Provider]
+  L --> G[Grounding Validator]
+  G --> API[FastAPI]
+  API --> UI[Explainable UI]
 ```
 
-## 数据流图
+详见：`docs/ARCHITECTURE.md`、`docs/ANALYTICS_AGENT.md`、`docs/OPERATIONS.md`、`docs/METRICS.md`。
 
-```mermaid
-flowchart TD
-  A[generate_data.py] --> B[data/raw]
-  B --> C[ods_load.py]
-  C --> D[data/ods]
-  D --> E[dwd_clean.py]
-  E --> F[data/dwd]
-  D --> G[dim_build.py]
-  G --> H[data/dim]
-  F --> I[dws_aggregate.py]
-  H --> I
-  I --> J[data/dws]
-  J --> K[ads_metrics.py]
-  F --> K
-  H --> K
-  K --> L[data/ads]
-  F --> M[run_quality_checks.py]
-  H --> M
-  M --> N[reports/data_quality_report.md]
+## Tool surface
+
+| Tool | 作用 |
+|---|---|
+| `get_kpi` | 当前 KPI |
+| `compare_periods` | 相邻窗口趋势/变化 |
+| `breakdown_by_dimension` | 受控维度下钻 |
+| `get_topn` | Top-N 排名 |
+| `detect_anomaly` | 日序列异常提示 |
+
+机器可读能力：
+
+```bash
+curl http://127.0.0.1:8000/api/v1/capabilities
 ```
 
-## 目录结构
+## Channel 口径
 
-```text
-retailpulse-offline-lakehouse/
-  README.md
-  requirements.txt
-  pyproject.toml
-  Makefile
-  .env.example
-  docker-compose.yml
-  scripts/
-    generate_data.py
-    run_all.py
-    run_all.ps1
-    run_quality_checks.py
-  jobs/
-    ods_load.py
-    dwd_clean.py
-    dim_build.py
-    dws_aggregate.py
-    ads_metrics.py
-  sql/
-    ods/
-    dwd/
-    dim/
-    dws/
-    ads/
-  data/
-    raw/
-    ods/
-    dwd/
-    dim/
-    dws/
-    ads/
-  docs/
-    PROJECT_PLAN.md
-    AGENTS.md
-    ARCHITECTURE.md
-    BUSINESS_PROCESS.md
-    DATA_WAREHOUSE_DESIGN.md
-    METRICS.md
-    SPARK_OPTIMIZATION.md
-    PUBLIC_DATASETS.md
-    DASHBOARD.md
-    INTERVIEW_QA.md
-    REFERENCES.md
-  dashboard/
-    index.html
-    data/
-  reports/
-    data_quality_report.md
-    metric_samples.md
-  tests/
-    test_data_generator.py
-    test_data_quality.py
-    test_metric_logic.py
-```
+`channel` 指用户注册/获客渠道，来自 `dim_user.channel`。它与行为日志里的 `source_channel`（单次访问来源）不同。
 
-## 本地运行步骤
+渠道 DWS 同时产出：
 
-建议先使用 `tiny` 规模验证链路。
+- order_count / order_user_count / GMV
+- pay_order_count / pay_user_count / pay_amount
+- pay_conversion_rate
+- avg_order_value
+- refund_order_count / refund_amount / refund_rate
+
+因此 Agent 可以回答“按渠道分析 GMV”“按渠道分析支付金额”等问题，而不是只把 channel 写在 prompt 里。
+
+## 快速启动
 
 ```bash
 python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements.txt
-python scripts/run_all.py --scale tiny --start-date 2025-01-01 --days 90
-pytest
+source .venv/bin/activate       # Windows: .\.venv\Scripts\activate
+pip install -r requirements-api.txt -r requirements-dev.txt
+python scripts/generate_demo_data.py
+uvicorn app.main:app --reload
 ```
 
-Windows PowerShell：
+- UI: `http://127.0.0.1:8000`
+- OpenAPI: `http://127.0.0.1:8000/docs`
+- Readiness: `http://127.0.0.1:8000/readyz`
+- Prometheus: `http://127.0.0.1:8000/metrics`
 
-```powershell
-.\scripts\setup_windows_spark.ps1
-.\scripts\run_all.ps1 -Scale tiny -StartDate 2025-01-01 -Days 90
-```
+没有 `OPENAI_API_KEY` 时自动使用 deterministic provider，Planner/Tool 主链仍然完整可演示。
 
-说明：Windows 本地 PySpark 写 Parquet 时通常需要 `HADOOP_HOME/bin/winutils.exe` 和 `hadoop.dll`。`run_all.ps1` 会在未配置 `HADOOP_HOME` 时自动调用 `setup_windows_spark.ps1`，在 `.runtime/hadoop/bin/` 下准备本项目本地使用的 Windows Hadoop 工具，并把该目录加入当前会话的 `PATH`。
-
-Makefile：
+可选接入 OpenAI：
 
 ```bash
-make install
-make all SCALE=tiny
-make test
+export OPENAI_API_KEY="..."
+export OPENAI_MODEL="gpt-5"
+uvicorn app.main:app --reload
 ```
 
-## 企业级模式
+Docker：
 
-本项目已支持把大数据组件安装到 E 盘企业级本地运行时目录：
+```bash
+docker compose up --build
+```
+
+## 推荐 Demo 问题
 
 ```text
-E:\RetailPulseEnterprise
+GMV 最近趋势如何？
+销售额最高的 Top5 商品是什么？
+为什么最近退款率上升？
+按渠道分析支付金额
+GMV 是否出现异常波动？
+按地区分析 GMV
 ```
 
-安装和应用配置：
+最后一个问题会明确返回 `region` coverage gap，用于演示系统如何拒绝伪造缺失维度。
 
-```powershell
-conda activate retailpulse-lakehouse
-cd E:\Projects\retailpulse-offline-lakehouse
+## API 响应可解释性
 
-.\scripts\setup_enterprise_components.ps1
-.\scripts\apply_enterprise_configs.ps1
-.\scripts\check_enterprise_env.ps1
-```
-
-Makefile 等价命令：
-
-```bash
-make enterprise-setup
-make enterprise-config
-make enterprise-check
-```
-
-企业级配置模板位于 `configs/enterprise/`，部署说明见 `docs/ENTERPRISE_DEPLOYMENT.md`，架构扩展见 `docs/ENTERPRISE_ARCHITECTURE.md`。
-
-说明：企业级模式现在从 Apache/Redis 官方下载合适版本，默认安装到 `E:\RetailPulseEnterprise`，并持久化到当前 Windows 用户环境变量。Spark 版本为 3.5.8，与项目 `pyspark` 版本保持一致；Sqoop 1.4.7 已补充 `commons-cli-1.2.jar` 兼容配置用于本地版本检查。
-
-## 企业级公开数据
-
-项目新增真实公开大规模数据入口，默认选择 RecSys Challenge 2025 / Synerise 在线零售数据集，压缩包约 1.9GB，下载到项目根目录下的 `external_data/synerise-recsys-2025/`。
-
-```powershell
-python scripts/download_public_data.py --dataset synerise-recsys-2025 --extract
-```
-
-说明见 `docs/PUBLIC_DATASETS.md`。
-
-当前本机已完成下载和解压，总占用约 4.35GB，数据画像见 `reports/public_dataset_profile.md`。
-
-Synerise 真实行为数据已支持进入数仓 ODS/DWD：
-
-```powershell
-python scripts/run_synerise_pipeline.py --input external_data/synerise-recsys-2025/extracted --data-root data
-```
-
-输出表包括 `ods_synerise_*`、`dwd_synerise_user_behavior_detail`、`dws_synerise_*` 和 `ads_synerise_*`，覆盖真实行为明细、每日汇总、漏斗转化和商品/品类 TopN。本地烟测可以使用：
-
-```powershell
-python scripts/run_synerise_pipeline.py --data-root data_synerise_smoke --limit-per-table 10000 --output-partitions 4
-```
-
-全量入仓验收见 `reports/synerise_pipeline_report.md`：当前已写入 DWD 真实行为明细 225,224,262 行，并产出 Synerise 行为 DWS/ADS 指标。
-
-## 可视化大屏
-
-大屏位于 `dashboard/index.html`，读取 ADS 指标导出的 `dashboard/data/dashboard.json`。当前版本是全中文字体的企业级 3D 沉浸式数据指挥中心，采用 `100vw × 100vh` 全屏驾驶舱布局和微软雅黑优先字体栈，包含 WebGL 粒子/光线背景、悬浮发光图表面板、中心转化核心、折线/面积/3D 柱状/散点/热力图、日期筛选、指标筛选、纵深调节、悬停 tooltip 和图表联动。
-
-### 一键启动 Dashboard
-
-Windows 在项目根目录双击 `start.cmd`，或执行：
-
-```powershell
-.\start.cmd
-```
-
-脚本会自动查找 Conda、创建缺失的 `retailpulse-lakehouse` 环境、生成 Dashboard 数据、启动服务并打开浏览器。也可以通过 npm 使用同一入口：
-
-```powershell
-npm run start
-```
-
-三种启动模式：
-
-```powershell
-# 仅本机访问
-.\start.cmd
-
-# 同一局域网内的其他电脑或手机访问
-.\start.cmd lan
-
-# 直接打开 Vercel 公网版本，跨网络访问且本机无需运行服务
-.\start.cmd public
-```
-
-公网固定地址：
+`POST /api/v1/ask` 返回：
 
 ```text
-https://retailpulse-offline-lakehouse.vercel.app
+request_id
+analysis
+  summary
+  observations[].evidence_keys
+  actions
+  caveats
+plan
+  planner_version
+  intent
+  calls[]
+  coverage_gaps
+tool_results[]
+  tool
+  status
+  data
+  evidence_key
+evidence[]
+provider / model
+warnings
+latency_ms
+cache_hit
+data_version
 ```
 
-需要重新从本地湖仓结果导出真实 Dashboard 数据时：
+前端会展示 Execution Plan、Tool Results 和最终 grounded analysis，而不是隐藏 Agent 过程。
 
-```powershell
-python scripts/export_dashboard_data.py --data-root data --external-root external_data/synerise-recsys-2025/extracted --output dashboard/data/dashboard.json --topn 10
-```
-
-需要以前台方式调试本地服务时：
-
-```powershell
-npm run dev
-```
-
-本机访问地址：
-
-```text
-http://127.0.0.1:8508
-```
-
-`lan` 模式会绑定 `0.0.0.0` 并在终端列出当前电脑的局域网 IPv4 地址；它只适用于同一局域网。位于不同网络的设备应使用上面的 Vercel 公网地址，不需要配置路由器端口映射。
-
-启动器不会把项目数据或运行缓存写入 C 盘用户目录：湖仓数据位于项目的 `data/`，Dashboard 数据位于 `dashboard/data/`，日志、PID、Spark 临时文件、Python/pip/Conda 缓存位于项目的 `.runtime/`。如果新机器上只存在 C 盘的同名环境，而项目本身位于其他磁盘，启动器会忽略该环境，并在项目的 `.runtime/conda-env/` 中创建项目专属环境。当前机器已有的 `D:\Anaconda\envs\retailpulse-lakehouse` 会继续复用。
-
-等价 Makefile：
+## 跑真实湖仓
 
 ```bash
-make dashboard-data
-make dashboard-serve
+pip install -r requirements-data.txt -r requirements-dev.txt
+python scripts/run_all.py \
+  --scale tiny \
+  --start-date 2025-01-01 \
+  --days 3 \
+  --data-root data
+
+python scripts/export_dashboard_data.py \
+  --data-root data \
+  --output dashboard/data/dashboard.json \
+  --topn 10
 ```
 
-说明见 `docs/DASHBOARD.md`。
+Serving snapshot 包括核心 KPI、日趋势、渠道汇总、商品/品类 Top-N、店铺排名、RFM、退款原因、库存周转等 ADS 资产。
 
-分步执行：
+## Test / Eval
 
 ```bash
-make generate SCALE=tiny
-make ods
-make dwd
-make dim
-make dws
-make ads
-make quality
+make lint
+make test-api
+make ai-eval
+make tool-eval
+make test-data
 ```
 
-## 数据规模
+- retrieval eval：问题是否召回正确 KPI；
+- tool-routing eval：是否选择正确工具/维度并识别 coverage gap；
+- Spark metric test：验证真实生产表达式，包括 channel aggregation；
+- API test：验证 plan/tool/grounding contract；
+- Docker smoke：镜像启动后发送真实 Agent 请求；
+- tiny pipeline：验证 ODS→DWD→DIM→DWS→ADS + quality gate。
 
-默认规模用于完整项目展示：
+## CI
 
-| 表 | 默认行数 |
-| --- | ---: |
-| users | 10,000 |
-| products | 5,000 |
-| shops | 500 |
-| orders | 300,000 |
-| order_items | 600,000 |
-| payments | 260,000 |
-| refunds | 30,000 |
-| user_events | 2,000,000 |
-| inventory_logs | 300,000 |
+GitHub Actions 拆为三条运行边界：
 
-本地快速验证可使用 `--scale tiny` 或 `--scale small`。
+1. **AI service quality**：Ruff、AI/Agent/API tests、retrieval eval、tool-routing eval。
+2. **Container packaging smoke**：build/run image + readiness + 真实 Agent HTTP 请求。
+3. **Lakehouse quality and smoke**：Spark 数据单测 + tiny pipeline + data-quality artifact。
 
-## 指标样例
+## 工程取舍
 
-核心指标包括：
+当前没有为了简历标签堆 LangChain、Vector DB、Kafka、Redis：
 
-- GMV、订单量、支付订单量、支付金额
-- 下单用户数、支付用户数、支付转化率、客单价
-- 退款率、复购率、次日留存率、7 日留存率
-- 商品销售 TopN、品类销售 TopN、店铺销售排行
-- RFM 用户分层、库存周转率
+- 结构化指标不需要 vector retrieval；
+- 当前单实例 cache/rate limiter 不需要 Redis，多实例时再迁移；
+- 没有异步长任务就不引入队列；
+- 小而稳定的 intent 用 deterministic planner 更容易 eval；intent 规模扩大后再升级 structured LLM planner。
 
-指标 SQL 位于 `sql/ads/`，口径说明位于 `docs/METRICS.md`。
+每个组件都必须能解释它如何提升准确性、可靠性、可测试性、成本控制或部署能力。
 
-## 数据质量校验样例
+## 面试重点
 
-运行：
-
-```bash
-python scripts/run_quality_checks.py --input data --output reports/data_quality_report.md --start-date 2025-01-01 --end-date 2025-03-31
-```
-
-检查项包括：
-
-- 主键重复
-- 关键字段为空
-- 订单金额异常
-- 支付金额与订单金额不一致
-- 支付时间早于下单时间
-- 退款金额大于支付金额
-- 维表关联缺失
-- 每日分区为空
-- 用户行为事件类型非法
-- 库存流水数量异常
-
-## Spark 优化点
-
-- ODS 之后统一使用 Parquet，减少 IO 并支持列裁剪。
-- 所有事实表和指标表按 `dt` 分区，支持单日增量和重跑。
-- 商品、店铺等维表关联使用 broadcast join。
-- 多次复用的订单明细和支付流水使用 cache/persist。
-- 聚合、窗口和 join 前尽量按日期过滤。
-- 输出前使用 coalesce 控制本地小文件数量。
-- 亿级扩展时可迁移到 Spark 集群、对象存储和 Delta/Iceberg/Hudi 表格式。
-
-详细说明见 `docs/SPARK_OPTIMIZATION.md`。
-
-## 项目难点
-
-1. 指标口径需要和业务流程一致，例如 GMV 与支付金额必须区分。
-2. 订单表和订单明细表粒度不同，计算订单指标时要避免明细行重复。
-3. 留存、复购、RFM 属于用户视角指标，需要和交易事实表正确关联。
-4. 本地项目既要能跑通，又要保留真实数仓项目的分层和性能优化思想。
-5. 数据质量检查要覆盖业务规则，而不只是检查文件是否存在。
-
-## 🚀 Deploy to Vercel
-
-The 3D dashboard is designed to be deployed as a static site on Vercel. The PySpark/ETL pipeline runs locally or on a data platform — Vercel hosts the visualization layer.
-
-Production URL: https://retailpulse-offline-lakehouse.vercel.app
-
-### Quick Deploy
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/plutoczm/retailpulse-offline-lakehouse)
-
-Or manually:
-
-```bash
-# 1. Generate dashboard data (Python stdlib only, no PySpark needed)
-python scripts/generate_vercel_data.py
-
-# 2. Deploy dashboard/ as static site
-vercel --cwd .
-
-# Or link and deploy
-vercel link
-vercel deploy
-```
-
-### Configuration
-
-| File | Purpose |
-|---|---|
-| `vercel.json` | Sets `dashboard/` as output directory, configures caching |
-| `scripts/generate_vercel_data.py` | Generates sample `dashboard/data/dashboard.json` for demo |
-| `package.json` | Minimal Node.js project for Vercel build |
-| `.vercelignore` | Excludes Spark/Hadoop configs, raw data, tests |
-
-### Architecture Note
-
-The Vercel deployment is the **dashboard visualization layer**. The data pipeline (ODS → DWD → DIM → DWS → ADS) runs offline — export results to `dashboard/data/dashboard.json` for the dashboard to consume.
-
-## 文档入口
-
-- 项目计划：`docs/PROJECT_PLAN.md`
-- Agent 分工：`docs/AGENTS.md`
-- 业务流程：`docs/BUSINESS_PROCESS.md`
-- 架构说明：`docs/ARCHITECTURE.md`
-- 企业级架构：`docs/ENTERPRISE_ARCHITECTURE.md`
-- 企业级部署：`docs/ENTERPRISE_DEPLOYMENT.md`
-- 数仓设计：`docs/DATA_WAREHOUSE_DESIGN.md`
-- 指标口径：`docs/METRICS.md`
-- Spark 优化：`docs/SPARK_OPTIMIZATION.md`
-- 面试问答：`docs/INTERVIEW_QA.md`
-- 参考说明：`docs/REFERENCES.md`
+1. 为什么 Data Quality Gate 是 AI grounding 的上游组成？
+2. bounded tools 相比 Text-to-SQL 解决了什么问题？
+3. `evidence_key` 的二次校验防住什么 hallucination？
+4. 为什么当前用规则 Planner，什么时候升级 LLM Planner？
+5. 比例指标做时间对比为什么不能平均 daily rate？
+6. channel 为什么要先从 DIM/DWS/ADS 建模，而不是改 prompt？
+7. acquisition `channel` 与 event `source_channel` 有何区别？
+8. cache key 为什么包含 `data_version` 和 `planner_version`？
+9. 如何区分 routing、tool/data、provider/synthesis 三类失败？
+10. 为什么 production 要 fail closed，不能偷偷回退 demo 数据？

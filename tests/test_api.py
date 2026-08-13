@@ -1,0 +1,91 @@
+from fastapi.testclient import TestClient
+
+from app.main import app
+
+client = TestClient(app)
+
+
+def test_health_and_readiness() -> None:
+    assert client.get("/healthz").json() == {"status": "ok"}
+    ready = client.get("/readyz")
+    assert ready.status_code == 200
+    body = ready.json()
+    assert body["status"] == "ready"
+    assert body["data_version"]
+    assert body["source_kind"] in {"lakehouse", "demo"}
+
+
+def test_capabilities_expose_bounded_agent_surface() -> None:
+    response = client.get("/api/v1/capabilities")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["planner_version"] == "rules-v2"
+    assert "get_topn" in body["tools"]
+    assert "category" in body["supported_dimensions"]
+    assert "channel" in body["supported_dimensions"]
+    assert "region" in body["known_coverage_gaps"]
+
+
+def test_ask_endpoint_returns_agent_plan_and_grounded_analysis() -> None:
+    response = client.post(
+        "/api/v1/ask",
+        json={"question": "支付转化率最近表现如何？", "top_k": 3},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    tool_evidence_keys = {
+        item["evidence_key"]
+        for item in body["tool_results"]
+        if item["status"] == "ok"
+    }
+
+    assert body["provider"] in {"deterministic", "openai"}
+    assert body["analysis"]["summary"]
+    assert body["data_version"]
+    assert body["request_id"]
+    assert body["plan"]["planner_version"]
+    assert any(call["tool"] == "compare_periods" for call in body["plan"]["calls"])
+    assert any(
+        item["metric"] == "pay_conversion_rate"
+        for item in body["evidence"]
+    )
+    assert all(
+        set(item["evidence_keys"]).issubset(tool_evidence_keys)
+        for item in body["analysis"]["observations"]
+    )
+
+
+def test_agent_executes_channel_breakdown() -> None:
+    response = client.post(
+        "/api/v1/ask",
+        json={"question": "按渠道分析 GMV", "top_k": 5},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "channel" not in body["plan"]["coverage_gaps"]
+    result = next(
+        item
+        for item in body["tool_results"]
+        if item["tool"] == "breakdown_by_dimension"
+    )
+    assert result["status"] == "ok"
+    assert result["data"]["dimension"] == "channel"
+    assert result["data"]["rows"]
+
+
+def test_agent_surfaces_missing_region_dimension() -> None:
+    response = client.post(
+        "/api/v1/ask",
+        json={"question": "按地区分析 GMV", "top_k": 3},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "region" in body["plan"]["coverage_gaps"]
+    assert any("region" in warning for warning in body["warnings"])
+
+
+def test_prometheus_endpoint_is_exposed() -> None:
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    assert "retailpulse_http_requests_total" in response.text
+    assert "retailpulse_agent_tool_calls_total" in response.text

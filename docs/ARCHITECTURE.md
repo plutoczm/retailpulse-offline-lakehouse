@@ -1,71 +1,62 @@
-# 架构说明
+# Architecture
 
-## 总体架构
-
-```mermaid
-flowchart LR
-  A[Source Data CSV] --> B[ODS 原始数据层]
-  B --> C[DWD 明细事实层]
-  B --> D[DIM 公共维度层]
-  C --> E[DWS 主题汇总层]
-  D --> E
-  E --> F[ADS 应用指标层]
-  C --> F
-  F --> G[BI / Report / Interview Demo]
-  C --> H[Data Quality Checks]
-  D --> H
-```
-
-## 数据流
+RetailPulse 采用 **离线可信数据平面 + 在线受控 AI 分析平面**。
 
 ```mermaid
-flowchart TD
-  G1[generate_data.py] --> R[data/raw/*.csv]
-  R --> O1[ods_load.py]
-  O1 --> ODS[data/ods/ods_*]
-  ODS --> D1[dwd_clean.py]
-  D1 --> DWD[data/dwd/dwd_*]
-  ODS --> M1[dim_build.py]
-  M1 --> DIM[data/dim/dim_*]
-  DWD --> S1[dws_aggregate.py]
-  DIM --> S1
-  S1 --> DWS[data/dws/dws_*]
-  DWS --> A1[ads_metrics.py]
-  DWD --> A1
-  DIM --> A1
-  A1 --> ADS[data/ads/ads_*]
-  ADS --> Q1[metric_samples.md]
-  DWD --> Q2[run_quality_checks.py]
-  DIM --> Q2
-  Q2 --> QR[data_quality_report.md]
+flowchart TB
+  subgraph Offline["Offline Data Plane"]
+    A[Raw / Public Retail Data] --> B[ODS]
+    B --> C[DWD + DIM]
+    C --> D[DWS]
+    D --> E[ADS Serving Tables]
+    C --> Q[Data Quality Gate]
+    Q --> E
+    E --> X[Versioned Serving Snapshot JSON]
+  end
+
+  subgraph Online["Online Analytics Agent"]
+    U[User Question] --> P[Bounded Query Planner]
+    X --> R[Metrics Repository]
+    R --> T[Controlled Analytics Toolbox]
+    P --> T
+    T --> TR[Trusted Tool Results]
+    TR --> L[OpenAI / Deterministic Provider]
+    L --> G[Grounding Validator]
+    G --> API[FastAPI]
+    API --> UI[Explainable Web UI / Client]
+  end
+
+  EV[Retrieval + Tool Routing Evals] --> CI[GitHub Actions]
+  Q --> CI
+  CI --> DS[Docker Smoke]
 ```
 
-## 分层职责
+## 关键边界
 
-| 层级 | 目录 | 职责 |
-| --- | --- | --- |
-| raw | `data/raw` | 模拟源系统 CSV 数据 |
-| ODS | `data/ods` | 保留源表结构，统一格式和加载字段 |
-| DWD | `data/dwd` | 清洗后的明细事实层，完成去重、标准化、基础校验 |
-| DIM | `data/dim` | 用户、商品、店铺、品类、日期等公共维度 |
-| DWS | `data/dws` | 按交易、用户、商品、店铺、品类、留存、库存汇总 |
-| ADS | `data/ads` | 面向看板和分析场景的应用指标表 |
+1. Spark 只跑离线计算，FastAPI 在线服务不启动 Spark/JVM。
+2. ADS 导出成轻量 serving snapshot，内容 hash 作为 `data_version`。
+3. Planner 不能生成任意 SQL、表名、路径或代码，只能选择白名单工具。
+4. LLM 只看到成功的 ToolResult，并且每条 observation 必须引用本次 `evidence_key`。
+5. 缺失维度显式进入 `coverage_gaps`，不让模型补造。
+6. AI service、Docker image、Spark lakehouse 在 CI 中分开验证。
 
-## 运行模式
+## Channel data contract
 
-默认运行模式为本地 PySpark：
+原始用户数据中的 `channel` 被定义为 **用户获客渠道**。`dim_user` 保留该字段，DWS 将订单、支付、退款事实按 `user_id -> channel` 聚合：
 
-```bash
-python scripts/run_all.py --scale tiny
+```text
+dim_user.channel
+  + dwd order/payment/refund
+  -> dws_channel_day_summary
+  -> ads_channel_summary
+  -> dashboard.json.channel_summary
+  -> breakdown_by_dimension(channel)
 ```
 
-可选 Docker Compose 提供 Spark standalone、PostgreSQL 和 MinIO，主要用于展示真实数据平台组件如何组合。本项目的核心链路不依赖 Docker，方便 Windows 11 + VSCode 本地演示。
+它与行为事件里的 `source_channel`（单次访问/事件来源）不是同一个口径。当前 Agent 支持 acquisition channel；若未来做 session attribution，需要单独建行为归因模型，不能混用两者。
 
-## 设计取舍
+## 为什么没有让 LLM 直接 Text-to-SQL
 
-- 使用 CSV 作为源系统落地格式，降低本地生成和调试成本。
-- 使用 Parquet 作为湖仓分层存储格式，模拟生产离线数仓常见实践。
-- 使用 `dt` 分区，便于每日增量计算和质量校验。
-- 指标链路优先保证口径清楚、可运行、可面试讲解。
-- Docker 环境作为增强项，不影响本地 Python + PySpark 的最小闭环。
+直接 Text-to-SQL 会扩大 schema 泄露、权限、资源扫描、指标口径绕过和 eval 空间。当前业务域优先使用 bounded tools。未来需要 ad-hoc 查询时，更合理的升级方向是受控 semantic query DSL，由后端编译成参数化 SQL。
 
+详细见 `ANALYTICS_AGENT.md` 与 `OPERATIONS.md`。

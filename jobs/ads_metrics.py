@@ -12,7 +12,6 @@ from pyspark.sql import DataFrame, SparkSession, Window
 from pyspark.sql import functions as F
 from pyspark.sql.functions import broadcast
 
-
 LOGGER = logging.getLogger("retailpulse.ads_metrics")
 
 
@@ -42,7 +41,11 @@ def ensure_windows_hadoop_home() -> None:
     if os.name != "nt":
         return
     configured = os.environ.get("HADOOP_HOME")
-    candidate = Path(configured).resolve() if configured else Path(__file__).resolve().parents[1] / ".runtime" / "hadoop"
+    candidate = (
+        Path(configured).resolve()
+        if configured
+        else Path(__file__).resolve().parents[1] / ".runtime" / "hadoop"
+    )
     if (candidate / "bin" / "winutils.exe").exists():
         os.environ["HADOOP_HOME"] = str(candidate)
         os.environ["hadoop.home.dir"] = str(candidate)
@@ -55,7 +58,11 @@ def read_parquet(spark: SparkSession, path: Path) -> DataFrame:
     return spark.read.parquet(str(path))
 
 
-def filter_dt(df: DataFrame, start_date: str | None, end_date: str | None) -> DataFrame:
+def filter_dt(
+    df: DataFrame,
+    start_date: str | None,
+    end_date: str | None,
+) -> DataFrame:
     if "dt" not in df.columns:
         return df
     if start_date:
@@ -65,14 +72,37 @@ def filter_dt(df: DataFrame, start_date: str | None, end_date: str | None) -> Da
     return df
 
 
-def write_table(df: DataFrame, output: Path, table: str, partitions: int = 2) -> None:
+def write_table(
+    df: DataFrame,
+    output: Path,
+    table: str,
+    partitions: int = 2,
+) -> None:
     target = str(output / table)
     LOGGER.info("Writing %s to %s", table, target)
     df.coalesce(partitions).write.mode("overwrite").partitionBy("dt").parquet(target)
 
 
 def safe_div(numerator: F.Column, denominator: F.Column) -> F.Column:
+    """Return a Spark expression that divides safely when denominator is zero."""
     return F.when(denominator == 0, F.lit(0.0)).otherwise(numerator / denominator)
+
+
+def rfm_segment(
+    r_score: F.Column,
+    f_score: F.Column,
+    m_score: F.Column,
+) -> F.Column:
+    """Return the production RFM segmentation expression used by ADS."""
+    return (
+        F.when(
+            (r_score >= 4) & (f_score >= 4) & (m_score >= 4),
+            F.lit("高价值用户"),
+        )
+        .when((r_score >= 4) & (f_score >= 3), F.lit("潜力用户"))
+        .when(r_score <= 2, F.lit("流失风险用户"))
+        .otherwise(F.lit("一般用户"))
+    )
 
 
 def run(args: argparse.Namespace) -> None:
@@ -80,17 +110,62 @@ def run(args: argparse.Namespace) -> None:
     output = Path(args.output)
     spark = create_spark()
     try:
-        trade = filter_dt(read_parquet(spark, root / "dws" / "dws_trade_day_summary"), args.start_date, args.end_date)
-        product = filter_dt(read_parquet(spark, root / "dws" / "dws_product_day_summary"), args.start_date, args.end_date)
-        category = filter_dt(read_parquet(spark, root / "dws" / "dws_category_day_summary"), args.start_date, args.end_date)
-        shop = filter_dt(read_parquet(spark, root / "dws" / "dws_shop_day_summary"), args.start_date, args.end_date)
-        retention = filter_dt(read_parquet(spark, root / "dws" / "dws_user_retention_summary"), args.start_date, args.end_date)
-        inventory = filter_dt(read_parquet(spark, root / "dws" / "dws_inventory_day_summary"), args.start_date, args.end_date)
-        user_day = filter_dt(read_parquet(spark, root / "dws" / "dws_user_day_summary"), args.start_date, args.end_date)
-        payments = filter_dt(read_parquet(spark, root / "dwd" / "dwd_trade_payment_detail"), args.start_date, args.end_date)
-        refunds = filter_dt(read_parquet(spark, root / "dwd" / "dwd_trade_refund_detail"), args.start_date, args.end_date)
-        dim_product = read_parquet(spark, root / "dim" / "dim_product").dropDuplicates(["product_id"])
-        dim_shop = read_parquet(spark, root / "dim" / "dim_shop").dropDuplicates(["shop_id"])
+        trade = filter_dt(
+            read_parquet(spark, root / "dws" / "dws_trade_day_summary"),
+            args.start_date,
+            args.end_date,
+        )
+        channel = filter_dt(
+            read_parquet(spark, root / "dws" / "dws_channel_day_summary"),
+            args.start_date,
+            args.end_date,
+        )
+        product = filter_dt(
+            read_parquet(spark, root / "dws" / "dws_product_day_summary"),
+            args.start_date,
+            args.end_date,
+        )
+        category = filter_dt(
+            read_parquet(spark, root / "dws" / "dws_category_day_summary"),
+            args.start_date,
+            args.end_date,
+        )
+        shop = filter_dt(
+            read_parquet(spark, root / "dws" / "dws_shop_day_summary"),
+            args.start_date,
+            args.end_date,
+        )
+        retention = filter_dt(
+            read_parquet(spark, root / "dws" / "dws_user_retention_summary"),
+            args.start_date,
+            args.end_date,
+        )
+        inventory = filter_dt(
+            read_parquet(spark, root / "dws" / "dws_inventory_day_summary"),
+            args.start_date,
+            args.end_date,
+        )
+        user_day = filter_dt(
+            read_parquet(spark, root / "dws" / "dws_user_day_summary"),
+            args.start_date,
+            args.end_date,
+        )
+        payments = filter_dt(
+            read_parquet(spark, root / "dwd" / "dwd_trade_payment_detail"),
+            args.start_date,
+            args.end_date,
+        )
+        refunds = filter_dt(
+            read_parquet(spark, root / "dwd" / "dwd_trade_refund_detail"),
+            args.start_date,
+            args.end_date,
+        )
+        dim_product = read_parquet(spark, root / "dim" / "dim_product").dropDuplicates(
+            ["product_id"]
+        )
+        dim_shop = read_parquet(spark, root / "dim" / "dim_shop").dropDuplicates(
+            ["shop_id"]
+        )
 
         trade.persist(StorageLevel.MEMORY_AND_DISK)
 
@@ -118,9 +193,14 @@ def run(args: argparse.Namespace) -> None:
             .groupBy("dt")
             .agg(
                 F.countDistinct("user_id").alias("paid_users"),
-                F.countDistinct(F.when(F.col("pay_order_count") >= 2, F.col("user_id"))).alias("repeat_paid_users"),
+                F.countDistinct(
+                    F.when(F.col("pay_order_count") >= 2, F.col("user_id"))
+                ).alias("repeat_paid_users"),
             )
-            .withColumn("repeat_purchase_rate", safe_div(F.col("repeat_paid_users"), F.col("paid_users")))
+            .withColumn(
+                "repeat_purchase_rate",
+                safe_div(F.col("repeat_paid_users"), F.col("paid_users")),
+            )
             .select("dt", "repeat_purchase_rate")
         )
         dashboard = (
@@ -130,28 +210,51 @@ def run(args: argparse.Namespace) -> None:
         )
         write_table(dashboard, output, "ads_retail_dashboard_daily")
 
-        product_rank_w = Window.partitionBy("dt").orderBy(F.col("sales_amount").desc(), F.col("sales_quantity").desc())
+        write_table(channel, output, "ads_channel_summary")
+
+        product_rank_w = Window.partitionBy("dt").orderBy(
+            F.col("sales_amount").desc(),
+            F.col("sales_quantity").desc(),
+        )
         product_topn = (
-            product.join(broadcast(dim_product.select("product_id", "product_name", "shop_id")), "product_id", "left")
+            product.join(
+                broadcast(
+                    dim_product.select("product_id", "product_name", "shop_id")
+                ),
+                "product_id",
+                "left",
+            )
             .withColumn("rank_no", F.row_number().over(product_rank_w))
             .filter(F.col("rank_no") <= 20)
         )
         write_table(product_topn, output, "ads_product_topn")
 
         category_rank_w = Window.partitionBy("dt").orderBy(F.col("sales_amount").desc())
-        category_topn = category.withColumn("rank_no", F.row_number().over(category_rank_w)).filter(F.col("rank_no") <= 20)
+        category_topn = category.withColumn(
+            "rank_no",
+            F.row_number().over(category_rank_w),
+        ).filter(F.col("rank_no") <= 20)
         write_table(category_topn, output, "ads_category_topn")
 
         shop_rank_w = Window.partitionBy("dt").orderBy(F.col("sales_amount").desc())
         shop_rank = (
-            shop.join(broadcast(dim_shop.select("shop_id", "shop_name", "shop_type", "city")), "shop_id", "left")
+            shop.join(
+                broadcast(dim_shop.select("shop_id", "shop_name", "shop_type", "city")),
+                "shop_id",
+                "left",
+            )
             .withColumn("rank_no", F.row_number().over(shop_rank_w))
             .filter(F.col("rank_no") <= 100)
         )
         write_table(shop_rank, output, "ads_shop_rank")
 
         retention_ads = retention.filter(F.col("day_diff").isin([1, 7])).select(
-            "cohort_dt", "day_diff", "cohort_users", "retained_users", "retention_rate", "dt"
+            "cohort_dt",
+            "day_diff",
+            "cohort_users",
+            "retained_users",
+            "retention_rate",
+            "dt",
         )
         write_table(retention_ads, output, "ads_user_retention")
 
@@ -164,37 +267,87 @@ def run(args: argparse.Namespace) -> None:
                 F.sum("pay_amount").alias("monetary"),
             )
             .withColumn("as_of_dt", F.lit(args.dt or args.end_date or "2099-12-31"))
-            .withColumn("recency_days", F.datediff(F.to_date("as_of_dt"), F.to_date("last_pay_time")))
+            .withColumn(
+                "recency_days",
+                F.datediff(F.to_date("as_of_dt"), F.to_date("last_pay_time")),
+            )
         )
         rfm = (
-            rfm_base.withColumn("r_score", F.when(F.col("recency_days") <= 7, 5).when(F.col("recency_days") <= 30, 4).when(F.col("recency_days") <= 60, 3).when(F.col("recency_days") <= 90, 2).otherwise(1))
-            .withColumn("f_score", F.when(F.col("frequency") >= 10, 5).when(F.col("frequency") >= 5, 4).when(F.col("frequency") >= 3, 3).when(F.col("frequency") >= 2, 2).otherwise(1))
-            .withColumn("m_score", F.when(F.col("monetary") >= 10000, 5).when(F.col("monetary") >= 5000, 4).when(F.col("monetary") >= 2000, 3).when(F.col("monetary") >= 500, 2).otherwise(1))
+            rfm_base.withColumn(
+                "r_score",
+                F.when(F.col("recency_days") <= 7, 5)
+                .when(F.col("recency_days") <= 30, 4)
+                .when(F.col("recency_days") <= 60, 3)
+                .when(F.col("recency_days") <= 90, 2)
+                .otherwise(1),
+            )
+            .withColumn(
+                "f_score",
+                F.when(F.col("frequency") >= 10, 5)
+                .when(F.col("frequency") >= 5, 4)
+                .when(F.col("frequency") >= 3, 3)
+                .when(F.col("frequency") >= 2, 2)
+                .otherwise(1),
+            )
+            .withColumn(
+                "m_score",
+                F.when(F.col("monetary") >= 10000, 5)
+                .when(F.col("monetary") >= 5000, 4)
+                .when(F.col("monetary") >= 2000, 3)
+                .when(F.col("monetary") >= 500, 2)
+                .otherwise(1),
+            )
             .withColumn(
                 "user_segment",
-                F.when((F.col("r_score") >= 4) & (F.col("f_score") >= 4) & (F.col("m_score") >= 4), "高价值用户")
-                .when((F.col("r_score") >= 4) & (F.col("f_score") >= 3), "潜力用户")
-                .when(F.col("r_score") <= 2, "流失风险用户")
-                .otherwise("一般用户"),
+                rfm_segment(
+                    F.col("r_score"),
+                    F.col("f_score"),
+                    F.col("m_score"),
+                ),
             )
             .withColumn("dt", F.col("as_of_dt"))
-            .select("user_id", "recency_days", "frequency", "monetary", "r_score", "f_score", "m_score", "user_segment", "dt")
+            .select(
+                "user_id",
+                "recency_days",
+                "frequency",
+                "monetary",
+                "r_score",
+                "f_score",
+                "m_score",
+                "user_segment",
+                "dt",
+            )
         )
         write_table(rfm, output, "ads_rfm_user_segment")
 
-        refund_analysis = refunds.groupBy("dt", "refund_reason", "refund_status").agg(
+        refund_analysis = refunds.groupBy(
+            "dt",
+            "refund_reason",
+            "refund_status",
+        ).agg(
             F.countDistinct("refund_id").alias("refund_count"),
             F.countDistinct("order_id").alias("refund_order_count"),
             F.sum("refund_amount").alias("refund_amount"),
         )
         write_table(refund_analysis, output, "ads_refund_analysis")
 
-        product_sales = product.select("dt", "product_id", "sales_quantity", "sales_amount")
+        product_sales = product.select(
+            "dt",
+            "product_id",
+            "sales_quantity",
+            "sales_amount",
+        )
         inventory_turnover = (
             inventory.join(product_sales, ["dt", "product_id"], "left")
             .na.fill({"sales_quantity": 0, "sales_amount": 0.0})
-            .withColumn("avg_inventory", (F.col("avg_before_quantity") + F.col("ending_quantity")) / 2)
-            .withColumn("inventory_turnover_rate", safe_div(F.col("sales_quantity"), F.col("avg_inventory")))
+            .withColumn(
+                "avg_inventory",
+                (F.col("avg_before_quantity") + F.col("ending_quantity")) / 2,
+            )
+            .withColumn(
+                "inventory_turnover_rate",
+                safe_div(F.col("sales_quantity"), F.col("avg_inventory")),
+            )
             .select(
                 "dt",
                 "product_id",

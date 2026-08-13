@@ -1,4 +1,4 @@
-"""Export ADS Parquet tables to a compact JSON payload for the dashboard."""
+"""Export ADS Parquet tables to a compact JSON serving snapshot."""
 
 from __future__ import annotations
 
@@ -14,9 +14,14 @@ import pyarrow.parquet as pq
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Export RetailPulse ADS metrics for dashboard rendering.")
+    parser = argparse.ArgumentParser(
+        description="Export RetailPulse ADS metrics for online serving."
+    )
     parser.add_argument("--data-root", default="data")
-    parser.add_argument("--external-root", default="external_data/synerise-recsys-2025/extracted")
+    parser.add_argument(
+        "--external-root",
+        default="external_data/synerise-recsys-2025/extracted",
+    )
     parser.add_argument("--output", default="dashboard/data/dashboard.json")
     parser.add_argument("--topn", type=int, default=10)
     return parser.parse_args()
@@ -43,7 +48,10 @@ def latest_dt(*frames: pd.DataFrame) -> str | None:
     return max(values) if values else None
 
 
-def latest_non_sparse_dt(df: pd.DataFrame, count_col: str = "event_count") -> str | None:
+def latest_non_sparse_dt(
+    df: pd.DataFrame,
+    count_col: str = "event_count",
+) -> str | None:
     if df.empty or "dt" not in df.columns:
         return None
     if count_col not in df.columns:
@@ -67,16 +75,31 @@ def clean_value(value: Any) -> Any:
     return value
 
 
-def records(df: pd.DataFrame, limit: int | None = None) -> list[dict[str, Any]]:
+def records(
+    df: pd.DataFrame,
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
     if limit is not None:
         df = df.head(limit)
-    return [{key: clean_value(value) for key, value in row.items()} for row in df.to_dict("records")]
+    return [
+        {key: clean_value(value) for key, value in row.items()}
+        for row in df.to_dict("records")
+    ]
 
 
-def sort_latest(df: pd.DataFrame, dt: str | None, sort_col: str, topn: int) -> pd.DataFrame:
+def sort_latest(
+    df: pd.DataFrame,
+    dt: str | None,
+    sort_col: str,
+    topn: int,
+) -> pd.DataFrame:
     if df.empty:
         return df
-    current = df[df["dt"].astype(str) == dt] if dt and "dt" in df.columns else df
+    current = (
+        df[df["dt"].astype(str) == dt]
+        if dt and "dt" in df.columns
+        else df
+    )
     if sort_col in current.columns:
         current = current.sort_values(sort_col, ascending=False)
     elif "rank_no" in current.columns:
@@ -88,6 +111,7 @@ def build_payload(data_root: Path, topn: int) -> dict[str, Any]:
     ads = data_root / "ads"
     tables = {
         "daily": normalize_dt(read_parquet_table(ads / "ads_retail_dashboard_daily")),
+        "channel_summary": normalize_dt(read_parquet_table(ads / "ads_channel_summary")),
         "product_topn": normalize_dt(read_parquet_table(ads / "ads_product_topn")),
         "category_topn": normalize_dt(read_parquet_table(ads / "ads_category_topn")),
         "shop_rank": normalize_dt(read_parquet_table(ads / "ads_shop_rank")),
@@ -95,13 +119,22 @@ def build_payload(data_root: Path, topn: int) -> dict[str, Any]:
         "rfm": normalize_dt(read_parquet_table(ads / "ads_rfm_user_segment")),
         "refund": normalize_dt(read_parquet_table(ads / "ads_refund_analysis")),
         "inventory": normalize_dt(read_parquet_table(ads / "ads_inventory_turnover")),
-        "synerise_daily": normalize_dt(read_parquet_table(ads / "ads_synerise_behavior_dashboard_daily")),
-        "synerise_event_type": normalize_dt(read_parquet_table(ads / "ads_synerise_event_type_trend")),
-        "synerise_product_topn": normalize_dt(read_parquet_table(ads / "ads_synerise_product_topn")),
-        "synerise_category_topn": normalize_dt(read_parquet_table(ads / "ads_synerise_category_topn")),
+        "synerise_daily": normalize_dt(
+            read_parquet_table(ads / "ads_synerise_behavior_dashboard_daily")
+        ),
+        "synerise_event_type": normalize_dt(
+            read_parquet_table(ads / "ads_synerise_event_type_trend")
+        ),
+        "synerise_product_topn": normalize_dt(
+            read_parquet_table(ads / "ads_synerise_product_topn")
+        ),
+        "synerise_category_topn": normalize_dt(
+            read_parquet_table(ads / "ads_synerise_category_topn")
+        ),
     }
     current_dt = latest_dt(
         tables["daily"],
+        tables["channel_summary"],
         tables["product_topn"],
         tables["category_topn"],
         tables["shop_rank"],
@@ -112,14 +145,32 @@ def build_payload(data_root: Path, topn: int) -> dict[str, Any]:
     )
     synerise_dt = latest_non_sparse_dt(tables["synerise_daily"])
 
-    daily = tables["daily"].sort_values("dt") if not tables["daily"].empty else pd.DataFrame()
-    latest_daily = daily[daily["dt"] == current_dt].tail(1) if current_dt and not daily.empty else pd.DataFrame()
-    kpis = latest_daily.iloc[0].to_dict() if not latest_daily.empty else {}
-    synerise_daily = tables["synerise_daily"].sort_values("dt") if not tables["synerise_daily"].empty else pd.DataFrame()
-    synerise_latest = (
-        synerise_daily[synerise_daily["dt"] == synerise_dt].tail(1) if synerise_dt and not synerise_daily.empty else pd.DataFrame()
+    daily = (
+        tables["daily"].sort_values("dt")
+        if not tables["daily"].empty
+        else pd.DataFrame()
     )
-    synerise_kpis = synerise_latest.iloc[0].to_dict() if not synerise_latest.empty else {}
+    latest_daily = (
+        daily[daily["dt"] == current_dt].tail(1)
+        if current_dt and not daily.empty
+        else pd.DataFrame()
+    )
+    kpis = latest_daily.iloc[0].to_dict() if not latest_daily.empty else {}
+    synerise_daily = (
+        tables["synerise_daily"].sort_values("dt")
+        if not tables["synerise_daily"].empty
+        else pd.DataFrame()
+    )
+    synerise_latest = (
+        synerise_daily[synerise_daily["dt"] == synerise_dt].tail(1)
+        if synerise_dt and not synerise_daily.empty
+        else pd.DataFrame()
+    )
+    synerise_kpis = (
+        synerise_latest.iloc[0].to_dict()
+        if not synerise_latest.empty
+        else {}
+    )
 
     rfm = tables["rfm"]
     if not rfm.empty and "user_segment" in rfm.columns:
@@ -134,8 +185,13 @@ def build_payload(data_root: Path, topn: int) -> dict[str, Any]:
 
     retention = tables["retention"]
     if not retention.empty:
-        retention_latest = retention[retention["dt"] == current_dt] if current_dt and "dt" in retention.columns else retention
-        retention_latest = retention_latest.sort_values(["cohort_dt", "day_diff"]) if "cohort_dt" in retention_latest.columns else retention_latest
+        retention_latest = (
+            retention[retention["dt"] == current_dt]
+            if current_dt and "dt" in retention.columns
+            else retention
+        )
+        if "cohort_dt" in retention_latest.columns:
+            retention_latest = retention_latest.sort_values(["cohort_dt", "day_diff"])
     else:
         retention_latest = retention
 
@@ -145,19 +201,54 @@ def build_payload(data_root: Path, topn: int) -> dict[str, Any]:
         "latest_dt": current_dt,
         "kpis": {key: clean_value(value) for key, value in kpis.items()},
         "daily": records(daily),
-        "product_topn": records(sort_latest(tables["product_topn"], current_dt, "sales_amount", topn)),
-        "category_topn": records(sort_latest(tables["category_topn"], current_dt, "sales_amount", topn)),
-        "shop_rank": records(sort_latest(tables["shop_rank"], current_dt, "sales_amount", topn)),
+        "channel_summary": records(
+            sort_latest(tables["channel_summary"], current_dt, "gmv", topn)
+        ),
+        "product_topn": records(
+            sort_latest(tables["product_topn"], current_dt, "sales_amount", topn)
+        ),
+        "category_topn": records(
+            sort_latest(tables["category_topn"], current_dt, "sales_amount", topn)
+        ),
+        "shop_rank": records(
+            sort_latest(tables["shop_rank"], current_dt, "sales_amount", topn)
+        ),
         "retention": records(retention_latest, limit=topn * 2),
         "rfm_segment": records(rfm_segment),
-        "refund_analysis": records(sort_latest(tables["refund"], current_dt, "refund_amount", topn)),
-        "inventory_turnover": records(sort_latest(tables["inventory"], current_dt, "inventory_turnover_rate", topn)),
+        "refund_analysis": records(
+            sort_latest(tables["refund"], current_dt, "refund_amount", topn)
+        ),
+        "inventory_turnover": records(
+            sort_latest(
+                tables["inventory"],
+                current_dt,
+                "inventory_turnover_rate",
+                topn,
+            )
+        ),
         "synerise_latest_dt": synerise_dt,
-        "synerise_kpis": {key: clean_value(value) for key, value in synerise_kpis.items()},
+        "synerise_kpis": {
+            key: clean_value(value)
+            for key, value in synerise_kpis.items()
+        },
         "synerise_daily": records(synerise_daily),
         "synerise_event_type": records(tables["synerise_event_type"]),
-        "synerise_product_topn": records(sort_latest(tables["synerise_product_topn"], synerise_dt, "pay_event_count", topn)),
-        "synerise_category_topn": records(sort_latest(tables["synerise_category_topn"], synerise_dt, "pay_event_count", topn)),
+        "synerise_product_topn": records(
+            sort_latest(
+                tables["synerise_product_topn"],
+                synerise_dt,
+                "pay_event_count",
+                topn,
+            )
+        ),
+        "synerise_category_topn": records(
+            sort_latest(
+                tables["synerise_category_topn"],
+                synerise_dt,
+                "pay_event_count",
+                topn,
+            )
+        ),
         "synerise_product_topn_all": records(tables["synerise_product_topn"]),
         "synerise_category_topn_all": records(tables["synerise_category_topn"]),
     }
@@ -188,7 +279,10 @@ def main() -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     payload = build_payload(Path(args.data_root), args.topn)
     payload["public_dataset"] = public_dataset_profile(Path(args.external_root))
-    output.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    output.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
     print(f"Dashboard data exported to {output}")
 
 
