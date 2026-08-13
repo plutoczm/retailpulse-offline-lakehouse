@@ -1,4 +1,4 @@
-.PHONY: install install-api install-data lint test test-api test-data ai-eval api demo-data \
+.PHONY: install install-api install-data lint test test-api test-data ai-eval tool-eval api demo-data \
 	windows-setup public-data synerise-all synerise-smoke generate ods dwd dim dws ads quality all clean
 
 PYTHON ?= python
@@ -23,19 +23,22 @@ install-data:
 	$(PYTHON) -m pip install -r requirements-data.txt -r requirements-dev.txt
 
 lint:
-	ruff check app scripts/run_ai_evals.py scripts/generate_demo_data.py tests/test_ai_*.py tests/test_api.py tests/test_runtime_controls.py
+	ruff check app scripts/run_ai_evals.py scripts/run_tool_evals.py scripts/generate_demo_data.py tests/test_ai_*.py tests/test_agent_tools.py tests/test_api.py tests/test_runtime_controls.py
 
 test:
 	pytest
 
 test-api:
-	pytest tests/test_ai_retrieval.py tests/test_ai_service.py tests/test_api.py tests/test_runtime_controls.py
+	pytest tests/test_ai_retrieval.py tests/test_ai_service.py tests/test_agent_tools.py tests/test_api.py tests/test_runtime_controls.py
 
 test-data:
 	pytest tests/test_data_generator.py tests/test_data_quality.py tests/test_metric_logic.py
 
 ai-eval:
 	$(PYTHON) scripts/run_ai_evals.py --threshold 0.95
+
+tool-eval:
+	$(PYTHON) scripts/run_tool_evals.py --threshold 0.95
 
 demo-data:
 	$(PYTHON) scripts/generate_demo_data.py

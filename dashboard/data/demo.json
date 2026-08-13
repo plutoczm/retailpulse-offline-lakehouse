@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-13T00:00:00Z",
+  "generated_at": "2026-08-13T09:33:11.898563Z",
   "latest_dt": "2025-01-07",
   "kpis": {
     "gmv": 1957500.0,
@@ -17,5 +17,39 @@
     {"dt": "2025-01-05", "order_count": 1180, "pay_order_count": 1050, "gmv": 291000.0, "pay_amount": 254000.0, "refund_amount": 7100.0},
     {"dt": "2025-01-06", "order_count": 1210, "pay_order_count": 1088, "gmv": 303000.0, "pay_amount": 266000.0, "refund_amount": 7400.0},
     {"dt": "2025-01-07", "order_count": 1280, "pay_order_count": 1165, "gmv": 322000.0, "pay_amount": 287500.0, "refund_amount": 7700.0}
+  ],
+  "product_topn": [
+    {"product_id": "P1001", "product_name": "高蛋白早餐组合", "sales_amount": 42800.0, "sales_quantity": 318, "buyer_count": 286},
+    {"product_id": "P1002", "product_name": "智能降噪耳机", "sales_amount": 39100.0, "sales_quantity": 142, "buyer_count": 135},
+    {"product_id": "P1003", "product_name": "敏感肌修护套装", "sales_amount": 33600.0, "sales_quantity": 226, "buyer_count": 205},
+    {"product_id": "P1004", "product_name": "轻量通勤双肩包", "sales_amount": 28700.0, "sales_quantity": 191, "buyer_count": 184},
+    {"product_id": "P1005", "product_name": "厨房收纳组合", "sales_amount": 25100.0, "sales_quantity": 248, "buyer_count": 221}
+  ],
+  "category_topn": [
+    {"category_id": "C01", "category_name": "食品饮料", "sales_amount": 105000.0, "sales_quantity": 780, "buyer_count": 692},
+    {"category_id": "C02", "category_name": "家居生活", "sales_amount": 82000.0, "sales_quantity": 604, "buyer_count": 533},
+    {"category_id": "C03", "category_name": "数码家电", "sales_amount": 74000.0, "sales_quantity": 238, "buyer_count": 226},
+    {"category_id": "C04", "category_name": "美妆个护", "sales_amount": 61000.0, "sales_quantity": 421, "buyer_count": 389}
+  ],
+  "shop_rank": [
+    {"shop_id": "S01", "shop_name": "华东旗舰店", "shop_type": "flagship", "city": "上海", "sales_amount": 96000.0, "buyer_count": 702},
+    {"shop_id": "S02", "shop_name": "华南生活馆", "shop_type": "standard", "city": "深圳", "sales_amount": 78500.0, "buyer_count": 598},
+    {"shop_id": "S03", "shop_name": "华北优选店", "shop_type": "standard", "city": "北京", "sales_amount": 64700.0, "buyer_count": 511}
+  ],
+  "refund_analysis": [
+    {"refund_reason": "物流破损", "refund_status": "approved", "refund_amount": 2800.0, "refund_count": 18, "refund_order_count": 17},
+    {"refund_reason": "质量问题", "refund_status": "approved", "refund_amount": 2400.0, "refund_count": 15, "refund_order_count": 15},
+    {"refund_reason": "描述不符", "refund_status": "approved", "refund_amount": 1500.0, "refund_count": 11, "refund_order_count": 10},
+    {"refund_reason": "其他", "refund_status": "approved", "refund_amount": 1000.0, "refund_count": 8, "refund_order_count": 8}
+  ],
+  "rfm_segment": [
+    {"user_segment": "高价值用户", "user_count": 1120, "monetary": 801000.0},
+    {"user_segment": "潜力用户", "user_count": 1840, "monetary": 451000.0},
+    {"user_segment": "一般用户", "user_count": 2690, "monetary": 348000.0},
+    {"user_segment": "流失风险用户", "user_count": 970, "monetary": 101500.0}
+  ],
+  "inventory_turnover": [
+    {"product_id": "P1001", "shop_id": "S01", "sales_amount": 42800.0, "sales_quantity": 318, "ending_quantity": 122, "inventory_turnover_rate": 2.41},
+    {"product_id": "P1005", "shop_id": "S02", "sales_amount": 25100.0, "sales_quantity": 248, "ending_quantity": 177, "inventory_turnover_rate": 1.66}
   ]
 }

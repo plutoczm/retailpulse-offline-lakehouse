@@ -60,7 +60,8 @@ def test_structured_grounding_and_versioned_cache(tmp_path: Path) -> None:
     second = service.ask("GMV 最近表现如何？", top_k=2)
 
     observation = first["analysis"]["observations"][0]
-    assert observation["evidence_keys"] == ["gmv"]
+    assert observation["evidence_keys"] == ["kpi:gmv"]
+    assert first["plan"]["planner_version"] == "rules-v1"
     assert first["cache_hit"] is False
     assert second["cache_hit"] is True
     assert first["data_version"] == second["data_version"]

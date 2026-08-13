@@ -43,6 +43,9 @@ jobs:
       - name: Run retrieval eval gate
         run: python scripts/run_ai_evals.py --threshold 0.95
 
+      - name: Run tool-routing eval gate
+        run: python scripts/run_tool_evals.py --threshold 0.95
+
   container-smoke:
     name: Container packaging smoke test
     runs-on: ubuntu-latest
@@ -58,7 +61,7 @@ jobs:
       - name: Start container
         run: docker run -d --name retailpulse-ai -p 8000:8000 retailpulse-ai:test
 
-      - name: Verify packaged API
+      - name: Verify packaged analytics agent
         run: |
           python - <<'PY'
           import json
@@ -74,7 +77,9 @@ jobs:
           else:
               raise SystemExit("container never became ready")
 
-          payload = json.dumps({"question": "GMV 最近表现如何？", "top_k": 2}).encode()
+          payload = json.dumps(
+              {"question": "销售额最高的 Top3 商品是什么？", "top_k": 3}
+          ).encode()
           request = urllib.request.Request(
               "http://127.0.0.1:8000/api/v1/ask",
               data=payload,
@@ -83,6 +88,8 @@ jobs:
           body = json.loads(urllib.request.urlopen(request, timeout=5).read())
           assert body["analysis"]["summary"]
           assert body["data_version"]
+          assert any(call["tool"] == "get_topn" for call in body["plan"]["calls"])
+          assert any(result["tool"] == "get_topn" for result in body["tool_results"])
           PY
 
       - name: Print container logs

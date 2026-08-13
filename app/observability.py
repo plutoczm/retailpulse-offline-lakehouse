@@ -26,3 +26,13 @@ AI_PROVIDER_FALLBACKS = Counter(
     "External provider fallbacks.",
     ("provider",),
 )
+AGENT_PLANS = Counter(
+    "retailpulse_agent_plans_total",
+    "Analytics plans by bounded intent.",
+    ("intent",),
+)
+AGENT_TOOL_CALLS = Counter(
+    "retailpulse_agent_tool_calls_total",
+    "Controlled analytics tool executions by outcome.",
+    ("tool", "status"),
+)
