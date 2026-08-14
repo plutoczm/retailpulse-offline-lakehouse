@@ -1,62 +1,454 @@
 [
   {
-    "question": "GMV 最近趋势如何？",
-    "expected_tools": ["get_kpi", "compare_periods"],
+    "id": "kpi-01",
+    "category": "kpi",
+    "question": "当前GMV是多少？",
+    "expected_tools": ["get_kpi"],
+    "expected_metrics": ["gmv"],
     "expected_dimensions": [],
     "expected_coverage_gaps": []
   },
   {
+    "id": "kpi-02",
+    "category": "kpi",
+    "question": "现在支付金额是多少？",
+    "expected_tools": ["get_kpi"],
+    "expected_metrics": ["pay_amount"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "kpi-03",
+    "category": "kpi",
+    "question": "当前支付转化率是多少？",
+    "expected_tools": ["get_kpi"],
+    "expected_metrics": ["pay_conversion_rate"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "kpi-04",
+    "category": "kpi",
+    "question": "客单价现在多少？",
+    "expected_tools": ["get_kpi"],
+    "expected_metrics": ["avg_order_value"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "kpi-05",
+    "category": "kpi",
+    "question": "当前复购率是多少？",
+    "expected_tools": ["get_kpi"],
+    "expected_metrics": ["repeat_purchase_rate"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "kpi-06",
+    "category": "kpi",
+    "question": "当前退款率是多少？",
+    "expected_tools": ["get_kpi"],
+    "expected_metrics": ["refund_rate"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "trend-01",
+    "category": "trend",
+    "question": "GMV 最近趋势如何？",
+    "expected_tools": ["get_kpi", "compare_periods"],
+    "expected_metrics": ["gmv"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "trend-02",
+    "category": "trend",
+    "question": "支付金额最近变化如何？",
+    "expected_tools": ["get_kpi", "compare_periods"],
+    "expected_metrics": ["pay_amount"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "trend-03",
+    "category": "trend",
+    "question": "支付转化率环比变化",
+    "expected_tools": ["get_kpi", "compare_periods"],
+    "expected_metrics": ["pay_conversion_rate"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "trend-04",
+    "category": "trend",
+    "question": "客单价最近下降了吗？",
+    "expected_tools": ["get_kpi", "compare_periods"],
+    "expected_metrics": ["avg_order_value"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "trend-05",
+    "category": "trend",
+    "question": "复购率最近增长情况",
+    "expected_tools": ["get_kpi", "compare_periods"],
+    "expected_metrics": ["repeat_purchase_rate"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "trend-06",
+    "category": "trend",
+    "question": "退款率最近趋势",
+    "expected_tools": ["get_kpi", "compare_periods"],
+    "expected_metrics": ["refund_rate"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "trend-07",
+    "category": "trend",
+    "question": "How did GMV change recently?",
+    "expected_tools": ["get_kpi", "compare_periods"],
+    "expected_metrics": ["gmv"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "trend-08",
+    "category": "trend",
+    "question": "Compare paid amount trend",
+    "expected_tools": ["get_kpi", "compare_periods"],
+    "expected_metrics": ["pay_amount"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "ranking-01",
+    "category": "ranking",
     "question": "销售额最高的 Top5 商品是什么？",
-    "expected_tools": ["get_topn"],
+    "expected_tools": ["get_kpi", "get_topn"],
+    "expected_metrics": ["gmv"],
     "expected_dimensions": ["product"],
     "expected_coverage_gaps": []
   },
   {
-    "question": "为什么最近退款率上升？",
-    "expected_tools": ["get_kpi", "compare_periods", "breakdown_by_dimension"],
+    "id": "ranking-02",
+    "category": "ranking",
+    "question": "GMV最高的品类 Top5",
+    "expected_tools": ["get_kpi", "get_topn"],
+    "expected_metrics": ["gmv"],
+    "expected_dimensions": ["category"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "ranking-03",
+    "category": "ranking",
+    "question": "支付金额最高的店铺排名",
+    "expected_tools": ["get_kpi", "get_topn"],
+    "expected_metrics": ["pay_amount"],
+    "expected_dimensions": ["shop"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "ranking-04",
+    "category": "ranking",
+    "question": "按渠道看GMV排名",
+    "expected_tools": ["get_kpi", "get_topn"],
+    "expected_metrics": ["gmv"],
+    "expected_dimensions": ["channel"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "ranking-05",
+    "category": "ranking",
+    "question": "Top 5 products by paid amount",
+    "expected_tools": ["get_kpi", "get_topn"],
+    "expected_metrics": ["pay_amount"],
+    "expected_dimensions": ["product"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "ranking-06",
+    "category": "ranking",
+    "question": "退款率最高的退款原因 Top5",
+    "expected_tools": ["get_kpi", "get_topn"],
+    "expected_metrics": ["refund_rate"],
     "expected_dimensions": ["refund_reason"],
-    "expected_coverage_gaps": []
+    "expected_coverage_gaps": [],
+    "notes": "“退款原因”是维度名称，不等价于因果诊断请求；额外 compare_periods 应计为 false positive。"
   },
   {
-    "question": "GMV 是否出现异常波动？",
-    "expected_tools": ["get_kpi", "detect_anomaly"],
-    "expected_dimensions": [],
-    "expected_coverage_gaps": []
-  },
-  {
-    "question": "按渠道分析 GMV",
-    "expected_tools": ["get_kpi", "breakdown_by_dimension"],
-    "expected_dimensions": ["channel"],
-    "expected_coverage_gaps": []
-  },
-  {
-    "question": "按渠道分析支付金额",
-    "expected_tools": ["get_kpi", "breakdown_by_dimension"],
-    "expected_dimensions": ["channel"],
-    "expected_coverage_gaps": []
-  },
-  {
-    "question": "按用户分层看看消费贡献",
-    "expected_tools": ["breakdown_by_dimension"],
+    "id": "ranking-07",
+    "category": "ranking",
+    "question": "用户分层 GMV 排名",
+    "expected_tools": ["get_kpi", "get_topn"],
+    "expected_metrics": ["gmv"],
     "expected_dimensions": ["user_segment"],
     "expected_coverage_gaps": []
   },
   {
-    "question": "品类销售额排行榜",
-    "expected_tools": ["get_topn"],
+    "id": "ranking-08",
+    "category": "ranking",
+    "question": "客单价最高的商品 Top5",
+    "expected_tools": ["get_kpi", "get_topn"],
+    "expected_metrics": ["avg_order_value"],
+    "expected_dimensions": ["product"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "diagnostic-01",
+    "category": "diagnostic",
+    "question": "为什么最近退款率上升？",
+    "expected_tools": ["get_kpi", "compare_periods", "breakdown_by_dimension"],
+    "expected_metrics": ["refund_rate"],
+    "expected_dimensions": ["refund_reason"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "diagnostic-02",
+    "category": "diagnostic",
+    "question": "支付金额为什么下降？",
+    "expected_tools": ["get_kpi", "compare_periods", "breakdown_by_dimension"],
+    "expected_metrics": ["pay_amount"],
     "expected_dimensions": ["category"],
     "expected_coverage_gaps": []
   },
   {
-    "question": "为什么支付金额变化了？按活动分析",
+    "id": "diagnostic-03",
+    "category": "diagnostic",
+    "question": "GMV变化的原因是什么？",
     "expected_tools": ["get_kpi", "compare_periods", "breakdown_by_dimension"],
+    "expected_metrics": ["gmv"],
     "expected_dimensions": ["category"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "diagnostic-04",
+    "category": "diagnostic",
+    "question": "为什么客单价最近下降？",
+    "expected_tools": ["get_kpi", "compare_periods", "breakdown_by_dimension"],
+    "expected_metrics": ["avg_order_value"],
+    "expected_dimensions": ["category"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "diagnostic-05",
+    "category": "diagnostic",
+    "question": "按渠道诊断支付金额为什么变化",
+    "expected_tools": ["get_kpi", "compare_periods", "breakdown_by_dimension"],
+    "expected_metrics": ["pay_amount"],
+    "expected_dimensions": ["channel"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "diagnostic-06",
+    "category": "diagnostic",
+    "question": "按品类分析GMV下降原因",
+    "expected_tools": ["get_kpi", "compare_periods", "breakdown_by_dimension"],
+    "expected_metrics": ["gmv"],
+    "expected_dimensions": ["category"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "diagnostic-07",
+    "category": "diagnostic",
+    "question": "Why did refund rate change?",
+    "expected_tools": ["get_kpi", "compare_periods", "breakdown_by_dimension"],
+    "expected_metrics": ["refund_rate"],
+    "expected_dimensions": ["refund_reason"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "diagnostic-08",
+    "category": "diagnostic",
+    "question": "Diagnose paid amount decline by category",
+    "expected_tools": ["get_kpi", "compare_periods", "breakdown_by_dimension"],
+    "expected_metrics": ["pay_amount"],
+    "expected_dimensions": ["category"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "anomaly-01",
+    "category": "anomaly",
+    "question": "GMV 是否出现异常波动？",
+    "expected_tools": ["get_kpi", "detect_anomaly"],
+    "expected_metrics": ["gmv"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "anomaly-02",
+    "category": "anomaly",
+    "question": "支付金额有异常突增吗？",
+    "expected_tools": ["get_kpi", "detect_anomaly"],
+    "expected_metrics": ["pay_amount"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "anomaly-03",
+    "category": "anomaly",
+    "question": "支付转化率是否异常下降？",
+    "expected_tools": ["get_kpi", "compare_periods", "detect_anomaly"],
+    "expected_metrics": ["pay_conversion_rate"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "anomaly-04",
+    "category": "anomaly",
+    "question": "退款率有没有异常波动？",
+    "expected_tools": ["get_kpi", "detect_anomaly"],
+    "expected_metrics": ["refund_rate"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "anomaly-05",
+    "category": "anomaly",
+    "question": "Detect GMV anomaly by channel",
+    "expected_tools": ["get_kpi", "breakdown_by_dimension", "detect_anomaly"],
+    "expected_metrics": ["gmv"],
+    "expected_dimensions": ["channel"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "anomaly-06",
+    "category": "anomaly",
+    "question": "refund rate spike by shop",
+    "expected_tools": ["get_kpi", "breakdown_by_dimension", "detect_anomaly"],
+    "expected_metrics": ["refund_rate"],
+    "expected_dimensions": ["shop"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "coverage-01",
+    "category": "coverage",
+    "question": "按地区分析 GMV",
+    "expected_tools": ["get_kpi"],
+    "expected_metrics": ["gmv"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": ["region"]
+  },
+  {
+    "id": "coverage-02",
+    "category": "coverage",
+    "question": "按活动分析支付金额",
+    "expected_tools": ["get_kpi"],
+    "expected_metrics": ["pay_amount"],
+    "expected_dimensions": [],
     "expected_coverage_gaps": ["campaign"]
   },
   {
-    "question": "按地区分析 GMV",
-    "expected_tools": ["get_kpi"],
+    "id": "coverage-03",
+    "category": "coverage",
+    "question": "GMV为什么变化？按活动分析",
+    "expected_tools": ["get_kpi", "compare_periods"],
+    "expected_metrics": ["gmv"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": ["campaign"],
+    "notes": "已明确请求不支持的 campaign；planner 不应偷偷用 category 替代。"
+  },
+  {
+    "id": "coverage-04",
+    "category": "coverage",
+    "question": "按区域查看退款率趋势",
+    "expected_tools": ["get_kpi", "compare_periods"],
+    "expected_metrics": ["refund_rate"],
     "expected_dimensions": [],
     "expected_coverage_gaps": ["region"]
+  },
+  {
+    "id": "coverage-05",
+    "category": "coverage",
+    "question": "GMV by region",
+    "expected_tools": ["get_kpi"],
+    "expected_metrics": ["gmv"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": ["region"]
+  },
+  {
+    "id": "coverage-06",
+    "category": "coverage",
+    "question": "paid amount by campaign",
+    "expected_tools": ["get_kpi"],
+    "expected_metrics": ["pay_amount"],
+    "expected_dimensions": [],
+    "expected_coverage_gaps": ["campaign"]
+  },
+  {
+    "id": "multi-01",
+    "category": "multi",
+    "question": "按渠道和品类分析GMV",
+    "expected_tools": ["get_kpi", "breakdown_by_dimension"],
+    "expected_metrics": ["gmv"],
+    "expected_dimensions": ["channel", "category"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "multi-02",
+    "category": "multi",
+    "question": "按商品和店铺看支付金额",
+    "expected_tools": ["get_kpi", "breakdown_by_dimension"],
+    "expected_metrics": ["pay_amount"],
+    "expected_dimensions": ["product", "shop"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "multi-03",
+    "category": "multi",
+    "question": "按渠道和用户分层分析退款率",
+    "expected_tools": ["get_kpi", "breakdown_by_dimension"],
+    "expected_metrics": ["refund_rate"],
+    "expected_dimensions": ["channel", "user_segment"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "multi-04",
+    "category": "multi",
+    "question": "按品类和店铺看客单价趋势",
+    "expected_tools": ["get_kpi", "compare_periods", "breakdown_by_dimension"],
+    "expected_metrics": ["avg_order_value"],
+    "expected_dimensions": ["category", "shop"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "multi-05",
+    "category": "multi",
+    "question": "Top商品和品类的GMV排名",
+    "expected_tools": ["get_kpi", "get_topn"],
+    "expected_metrics": ["gmv"],
+    "expected_dimensions": ["product", "category"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "multi-06",
+    "category": "multi",
+    "question": "按渠道和商品检查GMV异常波动",
+    "expected_tools": ["get_kpi", "breakdown_by_dimension", "detect_anomaly"],
+    "expected_metrics": ["gmv"],
+    "expected_dimensions": ["channel", "product"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "mixed-01",
+    "category": "mixed",
+    "question": "为什么退款率异常上升？按退款原因分析",
+    "expected_tools": ["get_kpi", "compare_periods", "breakdown_by_dimension", "detect_anomaly"],
+    "expected_metrics": ["refund_rate"],
+    "expected_dimensions": ["refund_reason"],
+    "expected_coverage_gaps": []
+  },
+  {
+    "id": "mixed-02",
+    "category": "mixed",
+    "question": "GMV最近下降，按渠道看看原因",
+    "expected_tools": ["get_kpi", "compare_periods", "breakdown_by_dimension"],
+    "expected_metrics": ["gmv"],
+    "expected_dimensions": ["channel"],
+    "expected_coverage_gaps": []
   }
 ]
