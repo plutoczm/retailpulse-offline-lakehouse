@@ -7,6 +7,7 @@ missed calls. A planner that always calls every tool can therefore no longer sco
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import sys
 from collections import defaultdict
@@ -17,7 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.agent import METRIC_CATALOG, QueryPlanner  # noqa: E402
+agent_module = importlib.import_module("app.agent")
+QueryPlanner = agent_module.QueryPlanner
+METRIC_CATALOG = agent_module.METRIC_CATALOG
 
 
 SURFACES = ("tools", "metrics", "dimensions", "coverage_gaps")
