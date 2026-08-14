@@ -17,8 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.agent import QueryPlanner  # noqa: E402
-from app.catalog import METRIC_CATALOG  # noqa: E402
+from app.agent import METRIC_CATALOG, QueryPlanner  # noqa: E402
 
 
 SURFACES = ("tools", "metrics", "dimensions", "coverage_gaps")
